@@ -2,7 +2,7 @@
 互动判定：根据用户消息内容推断 InteractionOutcome
 """
 
-from .models import InteractionOutcome
+from ..models import InteractionOutcome
 
 _FRIENDLY_KEYWORDS = {"哈哈", "谢谢", "爱你", "好的", "嗯嗯", "在的", "在呀", "嗨", "你好", "早安", "晚安", "拜拜", "嘻嘻"}
 _HOSTILE_KEYWORDS = {"滚", "走开", "别烦", "闭嘴", "不想", "别吵", "别闹", "不理", "无聊", "没意思", "烦死了"}
