@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.1.0] - 2025-04-29
+
+### Added
+- 74 个单元测试（pytest），覆盖 models / storage / engine / commands
+- `tests/conftest.py` mock astrbot.api，支持无框架环境测试
+
+### Fixed
+- `on_llm_response` 中 `response` 为 LLMResponse 对象而非 str，导致 TypeError
+- `engine/interaction.py` 相对导入路径错误（`.models` → `..models`）
+
 ## [2.0.0] - 2025-04-29
 
 ### Added
