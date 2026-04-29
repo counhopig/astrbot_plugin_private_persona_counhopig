@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.2.0] - 2025-04-29
+
+### Added
+- 手动修改工具命令集（无需重启，即时生效）:
+  - `/persona_set_emotion <e> <m> <s>` — 直接设置情感状态
+  - `/persona_set_affinity <0~100>` — 直接设置好感度
+  - `/persona_set_nickname <昵称>` — 修改昵称
+  - `/persona_set_config <key> <value>` — 动态修改配置（管理员）
+  - `/persona_remove_effect <ID>` — 删除指定心绪
+  - `/persona_clear_effects` — 清空所有心绪
+  - `/persona_clear_todos` — 清空所有待办
+  - `/persona_history` — 查看最近对话历史
+  - `/persona_debug` — 查看原始 JSON 数据（管理员）
+
 ## [2.1.0] - 2025-04-29
 
 ### Added

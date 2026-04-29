@@ -25,7 +25,7 @@ from .commands.handlers import CommandHandlers
     "astrbot_plugin_private_persona_counhopig",
     "Sisyphus",
     "AstrBot 私聊人格插件 —— 人格、情感、Effect、Todo、记忆与日结",
-    "2.1.0",
+    "2.2.0",
 )
 class PrivatePersonaPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
@@ -241,6 +241,51 @@ class PrivatePersonaPlugin(Star):
     @filter.command("persona_affinity", alias={"好感度", "pgaf"})
     async def cmd_persona_affinity(self, event: AstrMessageEvent):
         async for r in self.cmd.cmd_affinity(event):
+            yield r
+
+    @filter.command("persona_set_emotion", alias={"设置情感", "pse"})
+    async def cmd_persona_set_emotion(self, event: AstrMessageEvent):
+        async for r in self.cmd.cmd_set_emotion(event):
+            yield r
+
+    @filter.command("persona_remove_effect", alias={"删除心绪", "prfe"})
+    async def cmd_persona_remove_effect(self, event: AstrMessageEvent):
+        async for r in self.cmd.cmd_remove_effect(event):
+            yield r
+
+    @filter.command("persona_clear_effects", alias={"清空心绪", "pcfe"})
+    async def cmd_persona_clear_effects(self, event: AstrMessageEvent):
+        async for r in self.cmd.cmd_clear_effects(event):
+            yield r
+
+    @filter.command("persona_clear_todos", alias={"清空待办", "pctd"})
+    async def cmd_persona_clear_todos(self, event: AstrMessageEvent):
+        async for r in self.cmd.cmd_clear_todos(event):
+            yield r
+
+    @filter.command("persona_set_affinity", alias={"设置好感度", "psaf"})
+    async def cmd_persona_set_affinity(self, event: AstrMessageEvent):
+        async for r in self.cmd.cmd_set_affinity(event):
+            yield r
+
+    @filter.command("persona_set_nickname", alias={"设置昵称", "psnn"})
+    async def cmd_persona_set_nickname(self, event: AstrMessageEvent):
+        async for r in self.cmd.cmd_set_nickname(event):
+            yield r
+
+    @filter.command("persona_history", alias={"对话历史", "ph"})
+    async def cmd_persona_history(self, event: AstrMessageEvent):
+        async for r in self.cmd.cmd_history(event):
+            yield r
+
+    @filter.command("persona_debug", alias={"人格调试", "pdbg"})
+    async def cmd_persona_debug(self, event: AstrMessageEvent):
+        async for r in self.cmd.cmd_debug(event):
+            yield r
+
+    @filter.command("persona_set_config", alias={"设置配置", "pscfg"})
+    async def cmd_persona_set_config(self, event: AstrMessageEvent):
+        async for r in self.cmd.cmd_set_config(event):
             yield r
 
     @filter.command("persona_help", alias={"人格帮助", "pgh"})

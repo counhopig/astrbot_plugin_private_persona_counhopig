@@ -305,6 +305,218 @@ class CommandHandlers:
         except ValueError:
             yield event.plain_result("用法：/persona_affinity +10 或 /persona_affinity -5")
 
+    # ---------- 手动修改工具 ----------
+
+    async def cmd_set_emotion(self, event: AstrMessageEvent):
+        """
+        手动设置情感状态
+        用法: /persona_set_emotion <energy> <mood> <social_need>
+        """
+        user_id = event.get_sender_id()
+        msg = event.message_str.strip()
+        parts = msg.split()
+
+        if len(parts) < 4:
+            yield event.plain_result(
+                "用法: /persona_set_emotion <活力> <心情> <社交需求>\n"
+                "例如: /persona_set_emotion 80 70 50\n"
+                "范围: 0~100"
+            )
+            return
+
+        try:
+            energy = max(0.0, min(100.0, float(parts[1])))
+            mood = max(0.0, min(100.0, float(parts[2])))
+            social = max(0.0, min(100.0, float(parts[3])))
+        except ValueError:
+            yield event.plain_result("参数必须是数字。用法: /persona_set_emotion 80 70 50")
+            return
+
+        emotion = self.storage.get_emotion(user_id)
+        emotion.energy = energy
+        emotion.mood = mood
+        emotion.social_need = social
+        emotion.last_update = time.time()
+        self.storage.save_emotion(user_id, emotion)
+        yield event.plain_result(
+            f"情感状态已手动设置:\n"
+            f"  活力: {energy:.0f}/100\n"
+            f"  心情: {mood:.0f}/100\n"
+            f"  社交需求: {social:.0f}/100"
+        )
+
+    async def cmd_remove_effect(self, event: AstrMessageEvent):
+        """
+        删除指定 Effect
+        用法: /persona_remove_effect <ID>
+        """
+        user_id = event.get_sender_id()
+        msg = event.message_str.strip()
+        parts = msg.split(maxsplit=1)
+
+        if len(parts) < 2:
+            yield event.plain_result("用法: /persona_remove_effect <Effect ID>")
+            return
+
+        effect_id = parts[1].strip()
+        if self.storage.remove_effect(user_id, effect_id):
+            yield event.plain_result(f"已删除心绪 [{effect_id}]")
+        else:
+            yield event.plain_result(f"未找到心绪 [{effect_id}]")
+
+    async def cmd_clear_effects(self, event: AstrMessageEvent):
+        """清空所有活跃 Effect"""
+        user_id = event.get_sender_id()
+        effects = self.storage.get_active_effects(user_id)
+        count = 0
+        for e in effects:
+            if self.storage.remove_effect(user_id, e.id):
+                count += 1
+        yield event.plain_result(f"已清空 {count} 个活跃心绪 ✨")
+
+    async def cmd_clear_todos(self, event: AstrMessageEvent):
+        """清空所有 Todo"""
+        user_id = event.get_sender_id()
+        todos = self.storage.get_active_todos(user_id)
+        count = 0
+        for t in todos:
+            if self.storage.mark_todo_done(user_id, t.id):
+                count += 1
+        yield event.plain_result(f"已清空 {count} 个脑内关切 🧹")
+
+    async def cmd_set_affinity(self, event: AstrMessageEvent):
+        """
+        直接设置好感度（绝对值）
+        用法: /persona_set_affinity <0~100>
+        """
+        user_id = event.get_sender_id()
+        msg = event.message_str.strip()
+        parts = msg.split(maxsplit=1)
+
+        if len(parts) < 2:
+            yield event.plain_result("用法: /persona_set_affinity <0~100>")
+            return
+
+        try:
+            value = max(0.0, min(100.0, float(parts[1].strip())))
+        except ValueError:
+            yield event.plain_result("好感度必须是 0~100 之间的数字")
+            return
+
+        profile = self.storage.get_profile(user_id)
+        profile.affinity = value
+        self.storage.save_profile(user_id, profile)
+        yield event.plain_result(f"好感度已直接设置为 {value:.0f}/100")
+
+    async def cmd_set_nickname(self, event: AstrMessageEvent):
+        """
+        设置用户昵称
+        用法: /persona_set_nickname <昵称>
+        """
+        user_id = event.get_sender_id()
+        msg = event.message_str.strip()
+        parts = msg.split(maxsplit=1)
+
+        if len(parts) < 2:
+            yield event.plain_result("用法: /persona_set_nickname <昵称>")
+            return
+
+        nickname = parts[1].strip()
+        profile = self.storage.get_profile(user_id)
+        old = profile.nickname or "未设置"
+        profile.nickname = nickname
+        self.storage.save_profile(user_id, profile)
+        yield event.plain_result(f"昵称已更新: {old} → {nickname}")
+
+    async def cmd_history(self, event: AstrMessageEvent):
+        """查看最近对话历史"""
+        user_id = event.get_sender_id()
+        history = self.storage.get_history(user_id)
+        if not history:
+            yield event.plain_result("还没有对话记录")
+            return
+
+        lines = [f"=== 最近 {len(history)} 条对话 ==="]
+        for turn in history[-20:]:
+            role = "用户" if turn.role == "user" else "Bot"
+            ts = time.strftime("%m-%d %H:%M", time.localtime(turn.timestamp))
+            lines.append(f"\n[{ts}] {role}:\n{turn.content}")
+        yield event.plain_result("\n".join(lines))
+
+    async def cmd_debug(self, event: AstrMessageEvent):
+        """查看原始数据（管理员）"""
+        if not event.is_admin():
+            yield event.plain_result("只有管理员可以查看调试数据")
+            return
+
+        user_id = event.get_sender_id()
+        data = self.storage._load(user_id)
+        import json
+        pretty = json.dumps(data, ensure_ascii=False, indent=2)
+        if len(pretty) > 3000:
+            pretty = pretty[:3000] + "\n... (已截断)"
+        yield event.plain_result(f"=== 原始数据 ===\n```json\n{pretty}\n```")
+
+    async def cmd_set_config(self, event: AstrMessageEvent):
+        """
+        动态修改配置项（管理员，重启后失效）
+        用法: /persona_set_config <key> <value>
+        可修改项: persona_name, emotion_enabled, effect_enabled, todo_enabled, memory_enabled
+        """
+        if not event.is_admin():
+            yield event.plain_result("只有管理员可以修改配置")
+            return
+
+        user_id = event.get_sender_id()
+        msg = event.message_str.strip()
+        parts = msg.split(maxsplit=2)
+
+        if len(parts) < 3:
+            yield event.plain_result(
+                "用法: /persona_set_config <key> <value>\n"
+                "可修改项:\n"
+                "  persona_name — Bot 名称\n"
+                "  emotion_enabled — true/false\n"
+                "  effect_enabled — true/false\n"
+                "  todo_enabled — true/false\n"
+                "  memory_enabled — true/false\n"
+                "  consolidation_enabled — true/false"
+            )
+            return
+
+        key = parts[1].strip()
+        value = parts[2].strip()
+        bool_keys = {
+            "emotion_enabled", "effect_enabled", "todo_enabled",
+            "memory_enabled", "profile_enabled", "consolidation_enabled",
+            "time_awareness_enabled", "goodnight_hint_enabled",
+            "greeting_on_first_chat", "ignore_group_chat",
+            "effect_auto_trigger", "todo_auto_trigger",
+            "debug_log_enabled",
+        }
+
+        if key in bool_keys:
+            parsed = value.lower() in ("true", "1", "yes", "on")
+            setattr(self.cfg, key, parsed)
+            yield event.plain_result(f"配置项 {key} = {parsed}")
+        elif key == "persona_name":
+            self.cfg.persona_name = value
+            yield event.plain_result(f"Bot 名称已改为: {value}")
+        elif key in ("emotion_decay_per_hour", "emotion_recovery_per_reply"):
+            try:
+                setattr(self.cfg, key, float(value))
+                yield event.plain_result(f"配置项 {key} = {value}")
+            except ValueError:
+                yield event.plain_result(f"{key} 必须是数字")
+        elif key == "memory_max_turns":
+            try:
+                setattr(self.cfg, key, int(value))
+                yield event.plain_result(f"配置项 {key} = {value}")
+            except ValueError:
+                yield event.plain_result(f"{key} 必须是整数")
+        else:
+            yield event.plain_result(f"未知配置项: {key}")
+
     async def cmd_help(self, event: AstrMessageEvent):
         name = self.cfg.persona_name
         help_text = (
@@ -313,17 +525,26 @@ class CommandHandlers:
             "  /persona          — 查看完整人格状态\n"
             "  /persona_effects  — 查看活跃心绪\n"
             "  /persona_todo     — 查看脑内待办\n"
-            "  /persona_today    — 查看今日互动摘要\n\n"
+            "  /persona_today    — 查看今日互动摘要\n"
+            "  /persona_history  — 查看最近对话历史\n\n"
             "[日结]\n"
             "  /persona_consolidate — 手动执行人格日结\n\n"
-            "[管理]\n"
-            "  /persona_apply <bad|awkward|normal|good|relief>\n"
-            "  /persona_add_effect <类型> <描述>  (管理员)\n"
+            "[手动修改]\n"
+            "  /persona_set_emotion <e> <m> <s>  — 设置情感状态\n"
+            "  /persona_set_affinity <0~100>     — 直接设置好感度\n"
+            "  /persona_set_nickname <昵称>      — 设置昵称\n"
+            "  /persona_set_config <key> <value> — 动态改配置(管理员)\n"
+            "  /persona_remove_effect <ID>       — 删除指定心绪\n"
+            "  /persona_clear_effects            — 清空所有心绪\n"
+            "  /persona_clear_todos              — 清空所有待办\n"
+            "  /persona_add_effect <类型> <描述> — 添加心绪\n"
             "  /persona_add_todo <need|social> <内容>\n"
-            "  /persona_done_todo <ID>\n"
+            "  /persona_done_todo <ID>           — 完成待办\n"
+            "  /persona_apply <bad|awkward|normal|good|relief>\n"
             "  /persona_reset    — 重置所有记忆\n"
             "  /persona_note     — 添加/查看备注\n"
-            "  /persona_affinity — 查看好感度\n\n"
+            "  /persona_affinity — 查看/调整好感度\n"
+            "  /persona_debug    — 查看原始数据(管理员)\n\n"
             "[功能]\n"
             "  · 人格注入 + 情感系统 + Effect + Todo + 记忆 + 日结\n\n"
             "[配置]\n"
