@@ -126,8 +126,36 @@ class PrivatePersonaPlugin(Star):
             if self.cfg.todo_enabled and self.cfg.todo_auto_trigger:
                 self.todo_engine.auto_trigger(user_id, msg_text, outcome)
 
+    @staticmethod
+    def _extract_text(response) -> str:
+        """从 LLMResponse / Completion / Message / TextBlock 中提取纯文本"""
+        if isinstance(response, str):
+            return response
+        # AstrBot LLMResponse wrapper
+        if hasattr(response, "completion"):
+            completion = response.completion
+            if isinstance(completion, str):
+                return completion
+            # Anthropic Message style
+            if hasattr(completion, "content"):
+                parts = []
+                for block in completion.content:
+                    if hasattr(block, "text"):
+                        parts.append(block.text)
+                    elif isinstance(block, str):
+                        parts.append(block)
+                return " ".join(parts)
+            return str(completion)
+        # OpenAI style
+        if hasattr(response, "choices") and response.choices:
+            choice = response.choices[0]
+            if hasattr(choice, "message") and hasattr(choice.message, "content"):
+                return str(choice.message.content) or ""
+        # Fallback
+        return str(response)
+
     @filter.on_llm_response()
-    async def on_llm_response(self, event: AstrMessageEvent, response: str):
+    async def on_llm_response(self, event: AstrMessageEvent, response):
         user_id = event.get_sender_id()
         group_id = event.get_group_id()
         is_private = not bool(group_id)
@@ -137,9 +165,13 @@ class PrivatePersonaPlugin(Star):
         if not response:
             return
 
+        text = self._extract_text(response)
+        if not text:
+            return
+
         if self.cfg.memory_enabled:
-            self.storage.append_history(user_id, "bot", response)
-            self._debug(f"记录Bot回复: {response[:40]}")
+            self.storage.append_history(user_id, "bot", text)
+            self._debug(f"记录Bot回复: {text[:40]}")
 
         if self.cfg.emotion_enabled:
             emotion = self.storage.get_emotion(user_id)
