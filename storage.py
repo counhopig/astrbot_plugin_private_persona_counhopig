@@ -23,6 +23,8 @@ from .models import (
     TodoType,
     InteractionMode,
     InteractionOutcome,
+    ProfileFact,
+    ReflectionRecord,
 )
 
 
@@ -355,3 +357,95 @@ class PersonaStorage:
 
     def list_users(self) -> List[str]:
         return [f.stem for f in self.data_dir.iterdir() if f.suffix == ".json"]
+
+    # ---------- Reflection ----------
+
+    def get_reflections(self, user_id: str) -> List[ReflectionRecord]:
+        data = self._load(user_id)
+        reflections_data = data.get("reflections", [])
+        return [ReflectionRecord.from_dict(r) for r in reflections_data]
+
+    def add_reflection(self, user_id: str, trigger: str, note: str, facts_str: str = "", bias: str = "") -> ReflectionRecord:
+        record = ReflectionRecord(
+            id=str(uuid.uuid4())[:8],
+            trigger=trigger,
+            note=note,
+            facts_str=facts_str,
+            bias=bias,
+        )
+        data = self._load(user_id)
+        reflections = data.get("reflections", [])
+        reflections.append(record.to_dict())
+        # 保留最近 30 条
+        if len(reflections) > 30:
+            reflections = reflections[-30:]
+        data["reflections"] = reflections
+        self._save(user_id, data)
+        return record
+
+    def get_latest_reflection(self, user_id: str) -> Optional[ReflectionRecord]:
+        reflections = self.get_reflections(user_id)
+        return reflections[-1] if reflections else None
+
+    def get_unconsumed_reflection(self, user_id: str) -> Optional[ReflectionRecord]:
+        """获取一条未被消费（未注入 Prompt）的反思记录"""
+        data = self._load(user_id)
+        reflections = data.get("reflections", [])
+        for r in reflections:
+            if not r.get("consumed", False):
+                r["consumed"] = True
+                self._save(user_id, data)
+                return ReflectionRecord.from_dict(r)
+        return None
+
+    def clear_reflections(self, user_id: str):
+        data = self._load(user_id)
+        data["reflections"] = []
+        self._save(user_id, data)
+
+    # ---------- Profile Facts ----------
+
+    def get_profile_facts(self, user_id: str) -> List[ProfileFact]:
+        data = self._load(user_id)
+        facts_data = data.get("profile_facts", [])
+        return [ProfileFact.from_dict(f) for f in facts_data]
+
+    def add_profile_fact(self, user_id: str, category: str, content: str, evidence: str = "", confidence: float = 1.0) -> ProfileFact:
+        fact = ProfileFact(
+            id=str(uuid.uuid4())[:8],
+            category=category,
+            content=content,
+            evidence=evidence,
+            confidence=confidence,
+        )
+        data = self._load(user_id)
+        facts = data.get("profile_facts", [])
+        # 去重：相同 category + content 不重复添加
+        for existing in facts:
+            if existing.get("category") == category and existing.get("content") == content:
+                return ProfileFact.from_dict(existing)
+        facts.append(fact.to_dict())
+        # 保留最近 50 条
+        if len(facts) > 50:
+            facts = facts[-50:]
+        data["profile_facts"] = facts
+        self._save(user_id, data)
+        return fact
+
+    def remove_profile_fact(self, user_id: str, fact_id: str) -> bool:
+        data = self._load(user_id)
+        facts = data.get("profile_facts", [])
+        before = len(facts)
+        facts = [f for f in facts if f.get("id") != fact_id]
+        data["profile_facts"] = facts
+        self._save(user_id, data)
+        return len(facts) < before
+
+    def format_profile_facts_for_prompt(self, user_id: str) -> str:
+        facts = self.get_profile_facts(user_id)
+        if not facts:
+            return ""
+        lines = []
+        for f in facts:
+            lines.append(f"  · [{f.category}] {f.content}")
+        return "\n".join(lines)

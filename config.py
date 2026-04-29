@@ -43,6 +43,14 @@ class PluginConfig:
         self.memory_max_turns = int(c.get("memory_max_turns", 10))
         self.profile_enabled = c.get("profile_enabled", True)
 
+        self.reflection_enabled = c.get("reflection_enabled", True)
+        self.reflection_trigger_turns = int(c.get("reflection_trigger_turns", 10))
+        self.reflection_history_turns = int(c.get("reflection_history_turns", 20))
+        self.reflection_periodic_cron = c.get("reflection_periodic_cron", "0 */6 * * *")
+
+        self.profile_building_enabled = c.get("profile_building_enabled", True)
+        self.profile_building_trigger_turns = int(c.get("profile_building_trigger_turns", 5))
+
         # behavior
         self.ignore_group_chat = c.get("ignore_group_chat", True)
         self.greeting_on_first_chat = c.get("greeting_on_first_chat", True)

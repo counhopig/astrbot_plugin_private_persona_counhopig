@@ -2,6 +2,29 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.0] - 2025-04-29
+
+### Added
+- 自动反思系统（参考 self_evolution）：
+  - `engine/reflection_engine.py` — 分析对话历史，生成自我校准记录
+  - 触发方式：每 N 轮私聊对话（默认 10 轮）+ AstrBot cron 周期性任务（默认每 6 小时）
+  - LLM 输出 JSON：摘要、自评、用户情绪变化、新事实提取、认知纠偏
+  - 反思记录自动写入画像事实
+- 自动画像构建系统：
+  - `engine/profile_builder.py` — 从对话中提取用户偏好/身份/习惯/情绪模式
+  - 触发方式：每 N 轮私聊对话（默认 5 轮）
+  - 画像事实自动去重（category + content），保留最近 50 条
+  - 事实注入 Prompt，Bot 回复时自然引用
+- `upsert_cognitive_memory` LLM 工具 — LLM 在对话中主动调用记录新发现
+- 新命令：
+  - `/persona_reflections` — 查看反思记录
+  - `/persona_facts` — 查看自动构建的画像事实
+  - `/persona_clear_reflections` — 清空反思
+  - `/persona_remove_fact <ID>` — 删除画像事实
+- 新配置项（AstrBot 后台）：
+  - `reflection_enabled` / `reflection_trigger_turns` / `reflection_history_turns` / `reflection_periodic_cron`
+  - `profile_building_enabled` / `profile_building_trigger_turns`
+
 ## [2.2.0] - 2025-04-29
 
 ### Added

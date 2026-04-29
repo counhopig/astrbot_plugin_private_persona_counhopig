@@ -517,6 +517,54 @@ class CommandHandlers:
         else:
             yield event.plain_result(f"未知配置项: {key}")
 
+    async def cmd_reflections(self, event: AstrMessageEvent):
+        user_id = event.get_sender_id()
+        reflections = self.storage.get_reflections(user_id)
+        if not reflections:
+            yield event.plain_result("还没有反思记录 ✨")
+            return
+        lines = ["=== 反思记录 ==="]
+        for r in reflections[-10:]:
+            lines.append(f"\n[{r.id}] {r.trigger} — {r.created_at}")
+            lines.append(r.note)
+            if r.facts_str:
+                lines.append(f"提取事实: {r.facts_str}")
+            if r.bias:
+                lines.append(f"纠偏: {r.bias}")
+        yield event.plain_result("\n".join(lines))
+
+    async def cmd_facts(self, event: AstrMessageEvent):
+        user_id = event.get_sender_id()
+        facts = self.storage.get_profile_facts(user_id)
+        if not facts:
+            yield event.plain_result("还没有画像事实 ✨")
+            return
+        lines = ["=== 画像事实 ==="]
+        for f in facts:
+            lines.append(f"\n[{f.id}] [{f.category}] {f.content} (置信度: {f.confidence:.0%})")
+            if f.evidence:
+                lines.append(f"  证据: {f.evidence}")
+        yield event.plain_result("\n".join(lines))
+
+    async def cmd_clear_reflections(self, event: AstrMessageEvent):
+        user_id = event.get_sender_id()
+        self.storage.clear_reflections(user_id)
+        yield event.plain_result("反思记录已清空 🗑️")
+
+    async def cmd_remove_fact(self, event: AstrMessageEvent):
+        user_id = event.get_sender_id()
+        msg = event.message_str or ""
+        parts = msg.split(maxsplit=1)
+        if len(parts) < 2:
+            yield event.plain_result("用法: /persona_remove_fact <事实ID>")
+            return
+        fact_id = parts[1].strip()
+        ok = self.storage.remove_profile_fact(user_id, fact_id)
+        if ok:
+            yield event.plain_result(f"画像事实 {fact_id} 已删除 🗑️")
+        else:
+            yield event.plain_result(f"未找到事实 ID: {fact_id}")
+
     async def cmd_help(self, event: AstrMessageEvent):
         name = self.cfg.persona_name
         help_text = (
@@ -545,8 +593,13 @@ class CommandHandlers:
             "  /persona_note     — 添加/查看备注\n"
             "  /persona_affinity — 查看/调整好感度\n"
             "  /persona_debug    — 查看原始数据(管理员)\n\n"
+            "[反思与画像]\n"
+            "  /persona_reflections     — 查看反思记录\n"
+            "  /persona_facts           — 查看自动构建的画像事实\n"
+            "  /persona_clear_reflections — 清空反思\n"
+            "  /persona_remove_fact <ID> — 删除画像事实\n\n"
             "[功能]\n"
-            "  · 人格注入 + 情感系统 + Effect + Todo + 记忆 + 日结\n\n"
+            "  · 人格注入 + 情感系统 + Effect + Todo + 记忆 + 日结 + 自动反思 + 画像构建\n\n"
             "[配置]\n"
             "  AstrBot 后台 → 插件配置 → 私聊人格"
         )

@@ -41,6 +41,11 @@ class PromptBuilder:
             if block:
                 injections.append(block)
 
+        if self.cfg.reflection_enabled:
+            block = self._reflection(user_id)
+            if block:
+                injections.append(block)
+
         if self.cfg.profile_enabled:
             block = self._profile(user_id)
             if block:
@@ -113,9 +118,17 @@ class PromptBuilder:
         todo_str = self.storage.format_todos_for_prompt(user_id)
         return f"[脑内关切]\n{todo_str}" if todo_str else ""
 
+    def _reflection(self, user_id: str) -> str:
+        ref = self.storage.get_unconsumed_reflection(user_id)
+        if not ref:
+            return ""
+        return f"[自我反思]\n{ref.note}"
+
     def _profile(self, user_id: str) -> str:
         profile = self.storage.get_profile(user_id)
-        if not profile.nickname and profile.chat_count <= 1:
+        facts = self.storage.format_profile_facts_for_prompt(user_id)
+
+        if not profile.nickname and profile.chat_count <= 1 and not facts:
             return ""
 
         parts = []
@@ -133,6 +146,9 @@ class PromptBuilder:
 
         if profile.notes:
             parts.append(f"你对TA的了解：{profile.notes}")
+
+        if facts:
+            parts.append(f"自动构建的画像：\n{facts}")
 
         return "[对用户的印象]\n" + "\n".join(parts)
 

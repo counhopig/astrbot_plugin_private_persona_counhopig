@@ -228,3 +228,61 @@ class Consolidation:
     @classmethod
     def from_dict(cls, d: dict) -> "Consolidation":
         return cls(**d)
+
+
+@dataclass
+class ProfileFact:
+    """画像事实：自动提取的用户特征/偏好"""
+    id: str
+    category: str           # e.g. "preference", "identity", "habit", "emotion"
+    content: str            # 事实内容
+    evidence: str           # 来源证据（对话原文）
+    confidence: float = 1.0 # 置信度 0~1
+    created_at: float = field(default_factory=time.time)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "ProfileFact":
+        return cls(**d)
+
+
+@dataclass
+class ReflectionRecord:
+    """反思记录：LLM 对对话的自我校准"""
+    id: str
+    trigger: str            # 触发原因：auto / manual / periodic
+    note: str               # 反思内容
+    facts_str: str = ""     # 提取的事实（|分隔）
+    bias: str = ""          # 认知纠偏
+    created_at: float = field(default_factory=time.time)
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "ReflectionRecord":
+        return cls(**d)
+
+    def explicit_facts(self) -> list[str]:
+        """解析 facts_str 为列表"""
+        if not self.facts_str:
+            return []
+        return [f.strip() for f in self.facts_str.split("|") if f.strip()]
+
+
+@dataclass
+class ReflectionSession:
+    """一次反思会话的上下文"""
+    user_id: str
+    messages: list[dict]    # 参与反思的对话历史
+    summary: str = ""       # LLM 生成的摘要
+    reflection_id: str = ""
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "ReflectionSession":
+        return cls(**d)

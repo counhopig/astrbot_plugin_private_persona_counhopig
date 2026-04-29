@@ -95,6 +95,42 @@
     "default": true,
     "hint": "开启后 Bot 会维护对用户的了解（偏好、特征等）。"
   },
+  "reflection_enabled": {
+    "description": "启用自动反思",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 Bot 会定期回顾对话，生成自我校准记录并提取用户画像。"
+  },
+  "reflection_trigger_turns": {
+    "description": "反思触发轮数",
+    "type": "int",
+    "default": 10,
+    "hint": "私聊中累计多少轮对话后自动触发一次反思。"
+  },
+  "reflection_history_turns": {
+    "description": "反思参考历史轮数",
+    "type": "int",
+    "default": 20,
+    "hint": "每次反思时回顾多少轮对话历史。"
+  },
+  "reflection_periodic_cron": {
+    "description": "周期性反思 Cron",
+    "type": "string",
+    "default": "0 */6 * * *",
+    "hint": "Crontab 格式。默认每 6 小时对所有活跃用户触发一次反思。"
+  },
+  "profile_building_enabled": {
+    "description": "启用自动画像构建",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 Bot 会在对话中自动提取用户画像事实。"
+  },
+  "profile_building_trigger_turns": {
+    "description": "画像构建触发轮数",
+    "type": "int",
+    "default": 5,
+    "hint": "每多少轮对话触发一次画像构建（通常比反思更频繁）。"
+  },
   "ignore_group_chat": {
     "description": "仅在私聊生效",
     "type": "bool",

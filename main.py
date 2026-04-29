@@ -18,6 +18,8 @@ from .engine.prompt_builder import PromptBuilder
 from .engine.interaction import judge_outcome
 from .engine.effect_engine import EffectEngine
 from .engine.todo_engine import TodoEngine
+from .engine.reflection_engine import ReflectionEngine
+from .engine.profile_builder import ProfileBuilder
 from .commands.handlers import CommandHandlers
 
 
@@ -25,7 +27,7 @@ from .commands.handlers import CommandHandlers
     "astrbot_plugin_private_persona_counhopig",
     "Sisyphus",
     "AstrBot 私聊人格插件 —— 人格、情感、Effect、Todo、记忆与日结",
-    "2.2.1",
+    "2.3.0",
 )
 class PrivatePersonaPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
@@ -42,7 +44,13 @@ class PrivatePersonaPlugin(Star):
         self.prompt_builder = PromptBuilder(self.cfg, self.storage)
         self.effect_engine = EffectEngine(self.storage)
         self.todo_engine = TodoEngine(self.storage)
+        self.reflection_engine = ReflectionEngine(self.storage, self.cfg)
+        self.profile_builder = ProfileBuilder(self.storage, self.cfg)
         self.cmd = CommandHandlers(self.cfg, self.storage)
+
+        # 轮数计数器（用于触发反思和画像构建）
+        self._turn_counters: dict[str, int] = {}
+        self._profile_turn_counters: dict[str, int] = {}
 
         logger.info(f"[PrivatePersona] 插件已加载，人格: {self.cfg.persona_name}")
 
@@ -55,6 +63,18 @@ class PrivatePersonaPlugin(Star):
     # ============================================================
 
     async def initialize(self):
+        if self.cfg.reflection_enabled and self.cfg.reflection_periodic_cron:
+            try:
+                await self.context.cron_manager.add_basic_job(
+                    name="private_persona_periodic_reflection",
+                    cron_expression=self.cfg.reflection_periodic_cron,
+                    handler=self._periodic_reflection,
+                    description="私聊人格插件：周期性自动反思",
+                    persistent=False,
+                )
+                logger.info(f"[PrivatePersona] 周期性反思已注册: {self.cfg.reflection_periodic_cron}")
+            except Exception as e:
+                logger.warning(f"[PrivatePersona] 注册周期性反思失败: {e}")
         logger.info("[PrivatePersona] 初始化完成")
 
     @filter.on_plugin_unloaded()
@@ -125,6 +145,19 @@ class PrivatePersonaPlugin(Star):
                 self.effect_engine.auto_trigger(user_id, msg_text, outcome)
             if self.cfg.todo_enabled and self.cfg.todo_auto_trigger:
                 self.todo_engine.auto_trigger(user_id, msg_text, outcome)
+
+            # 轮数计数，触发反思和画像构建
+            if self.cfg.reflection_enabled:
+                self._turn_counters[user_id] = self._turn_counters.get(user_id, 0) + 1
+                if self._turn_counters[user_id] >= self.cfg.reflection_trigger_turns:
+                    self._turn_counters[user_id] = 0
+                    await self._run_reflection(user_id)
+
+            if self.cfg.profile_building_enabled:
+                self._profile_turn_counters[user_id] = self._profile_turn_counters.get(user_id, 0) + 1
+                if self._profile_turn_counters[user_id] >= self.cfg.profile_building_trigger_turns:
+                    self._profile_turn_counters[user_id] = 0
+                    await self._run_profile_building(user_id)
 
     @staticmethod
     def _extract_text(response) -> str:
@@ -288,6 +321,26 @@ class PrivatePersonaPlugin(Star):
         async for r in self.cmd.cmd_set_config(event):
             yield r
 
+    @filter.command("persona_reflections", alias={"反思记录", "prf"})
+    async def cmd_persona_reflections(self, event: AstrMessageEvent):
+        async for r in self.cmd.cmd_reflections(event):
+            yield r
+
+    @filter.command("persona_facts", alias={"画像事实", "pf"})
+    async def cmd_persona_facts(self, event: AstrMessageEvent):
+        async for r in self.cmd.cmd_facts(event):
+            yield r
+
+    @filter.command("persona_clear_reflections", alias={"清空反思", "pcr"})
+    async def cmd_persona_clear_reflections(self, event: AstrMessageEvent):
+        async for r in self.cmd.cmd_clear_reflections(event):
+            yield r
+
+    @filter.command("persona_remove_fact", alias={"删除事实", "prmf"})
+    async def cmd_persona_remove_fact(self, event: AstrMessageEvent):
+        async for r in self.cmd.cmd_remove_fact(event):
+            yield r
+
     @filter.command("persona_help", alias={"人格帮助", "pgh"})
     async def cmd_persona_help(self, event: AstrMessageEvent):
         async for r in self.cmd.cmd_help(event):
@@ -307,3 +360,75 @@ class PrivatePersonaPlugin(Star):
         if profile.chat_count > 1:
             return
         # 不强制发送，由 Prompt 注入引导 LLM 自然问候
+
+    # ============================================================
+    # 反思与画像构建
+    # ============================================================
+
+    async def _run_reflection(self, user_id: str):
+        """对指定用户触发一次自动反思"""
+        try:
+            history = self.storage.get_history(user_id)
+            if not history:
+                return
+            messages = [h.to_dict() for h in history[-self.cfg.reflection_history_turns:]]
+            prompt = self.reflection_engine.build_prompt(user_id, messages)
+
+            provider_id = await self.context.get_current_chat_provider_id(user_id)
+            response = await self.context.llm_generate(
+                chat_provider_id=provider_id,
+                prompt=prompt,
+                system_prompt="你是一个对话反思助手，请客观分析对话并输出指定格式的 JSON。",
+            )
+            text = self._extract_text(response)
+            self.reflection_engine.parse_result(user_id, text)
+            self._debug(f"用户 {user_id} 反思完成")
+        except Exception as e:
+            logger.warning(f"[PrivatePersona] 反思失败: {e}")
+
+    async def _run_profile_building(self, user_id: str):
+        """对指定用户触发一次画像构建"""
+        try:
+            history = self.storage.get_history(user_id)
+            if not history:
+                return
+            messages = [h.to_dict() for h in history[-self.cfg.reflection_history_turns:]]
+            prompt = self.profile_builder.build_prompt(user_id, messages)
+
+            provider_id = await self.context.get_current_chat_provider_id(user_id)
+            response = await self.context.llm_generate(
+                chat_provider_id=provider_id,
+                prompt=prompt,
+                system_prompt="你是一个用户画像分析助手，请从对话中提取用户事实并输出指定格式的 JSON。",
+            )
+            text = self._extract_text(response)
+            self.profile_builder.parse_result(user_id, text)
+            self._debug(f"用户 {user_id} 画像构建完成")
+        except Exception as e:
+            logger.warning(f"[PrivatePersona] 画像构建失败: {e}")
+
+    def _periodic_reflection(self):
+        """周期性反思的 cron handler（同步包装）"""
+        for user_id in self.storage.list_users():
+            history = self.storage.get_history(user_id)
+            if len(history) >= 2:
+                import asyncio
+                asyncio.create_task(self._run_reflection(user_id))
+
+    # ============================================================
+    # LLM 工具
+    # ============================================================
+
+    @filter.llm_tool(name="upsert_cognitive_memory")
+    async def tool_upsert_cognitive_memory(self, event: AstrMessageEvent, category: str, content: str, evidence: str = "", confidence: float = 1.0):
+        """记录或更新关于用户的认知记忆（画像事实）。当对话中了解到用户的新偏好、身份、习惯时调用。"""
+        user_id = event.get_sender_id()
+        self.profile_builder.upsert_fact(
+            user_id=user_id,
+            category=category,
+            content=content,
+            evidence=evidence,
+            confidence=confidence,
+        )
+        self._debug(f"LLM 工具记录认知记忆: [{category}] {content}")
+        return {"status": "ok", "message": f"已记录: [{category}] {content}"}
