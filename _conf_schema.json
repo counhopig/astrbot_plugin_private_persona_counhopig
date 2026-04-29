@@ -1,178 +1,122 @@
 {
-  "persona": {
-    "type": "object",
-    "description": "人格设定",
-    "hint": "Bot 在私聊中的基础人格与行为设定。",
-    "items": {
-      "persona_name": {
-        "description": "Bot 名称",
-        "type": "string",
-        "default": "小忆",
-        "hint": "私聊中 Bot 对自己的称呼。"
-      },
-      "persona_base_prompt": {
-        "description": "人格基底 Prompt",
-        "type": "string",
-        "default": "你是一个温柔细腻、略带毒舌但内心柔软的少女。你喜欢倾听，偶尔也会吐槽。你说话自然、口语化，不用太正式。你记得和用户之间的点滴，会在合适的时候提起往事。",
-        "hint": "注入到 System Prompt 的人格基底描述。"
-      },
-      "persona_reply_style": {
-        "description": "回复风格提示",
-        "type": "string",
-        "default": "用自然、口语化的方式回复，不要 robotic。偶尔可以用 emoji 或语气词表达情绪。回复不要太长，保持在 2~4 句话左右。",
-        "hint": "控制 Bot 回复的语气、长度和风格。"
-      },
-      "time_awareness_enabled": {
-        "description": "启用时间感知",
-        "type": "bool",
-        "default": true,
-        "hint": "在 Prompt 中注入当前时间，让 Bot 能根据时段调整语气。"
-      }
-    }
+  "persona_name": {
+    "description": "Bot 名称",
+    "type": "string",
+    "default": "小忆",
+    "hint": "私聊中 Bot 对自己的称呼。"
   },
-  "emotion": {
-    "type": "object",
-    "description": "情感状态",
-    "hint": "Bot 的内在状态系统，影响回复意愿与语气。",
-    "items": {
-      "emotion_enabled": {
-        "description": "启用情感系统",
-        "type": "bool",
-        "default": true,
-        "hint": "开启后 Bot 会有能量、心情等状态变化，并注入 Prompt。"
-      },
-      "emotion_decay_per_hour": {
-        "description": "每小时自然衰减",
-        "type": "float",
-        "default": 2.0,
-        "hint": "能量和心情每小时自然下降的值。"
-      },
-      "emotion_recovery_per_reply": {
-        "description": "每次回复恢复量",
-        "type": "float",
-        "default": 3.0,
-        "hint": "Bot 回复用户后心情和能量的恢复值。"
-      },
-      "emotion_injection_style": {
-        "description": "情感注入风格",
-        "type": "string",
-        "default": "narrative",
-        "hint": "narrative = 叙事型（如'有点累，但见到你心情好了点'）；status = 状态型（如'能量: 80/100'）。"
-      }
-    }
+  "persona_base_prompt": {
+    "description": "人格基底 Prompt",
+    "type": "string",
+    "default": "你是一个温柔细腻、略带毒舌但内心柔软的少女。你喜欢倾听，偶尔也会吐槽。你说话自然、口语化，不用太正式。你记得和用户之间的点滴，会在合适的时候提起往事。",
+    "hint": "注入到 System Prompt 的人格基底描述。"
   },
-  "effect": {
-    "type": "object",
-    "description": "心绪 Effect",
-    "hint": "互动触发的心绪效果，带来源语义与自然衰减。",
-    "items": {
-      "effect_enabled": {
-        "description": "启用 Effect 系统",
-        "type": "bool",
-        "default": true,
-        "hint": "开启后 Bot 会根据互动结果产生心绪变化（wronged/lonely/tired 等）。"
-      },
-      "effect_auto_trigger": {
-        "description": "自动触发 Effect",
-        "type": "bool",
-        "default": true,
-        "hint": "自动根据用户消息和状态触发 Effect。关闭后可全部手动管理。"
-      }
-    }
+  "persona_reply_style": {
+    "description": "回复风格提示",
+    "type": "string",
+    "default": "用自然、口语化的方式回复，不要 robotic。偶尔可以用 emoji 或语气词表达情绪。回复不要太长，保持在 2~4 句话左右。",
+    "hint": "控制 Bot 回复的语气、长度和风格。"
   },
-  "todo": {
-    "type": "object",
-    "description": "脑内待办",
-    "hint": "Bot 的脑内关切列表，分为生理型和关系型。",
-    "items": {
-      "todo_enabled": {
-        "description": "启用 Todo 系统",
-        "type": "bool",
-        "default": true,
-        "hint": "开启后 Bot 会维护脑内待办并在 Prompt 中注入。"
-      },
-      "todo_auto_trigger": {
-        "description": "自动触发 Todo",
-        "type": "bool",
-        "default": true,
-        "hint": "自动根据状态和 Effect 生成 Todo。关闭后可全部手动管理。"
-      }
-    }
+  "time_awareness_enabled": {
+    "description": "启用时间感知",
+    "type": "bool",
+    "default": true,
+    "hint": "在 Prompt 中注入当前时间，让 Bot 能根据时段调整语气。"
   },
-  "consolidation": {
-    "type": "object",
-    "description": "人格日结",
-    "hint": "每日互动统计与情感轨迹固化。",
-    "items": {
-      "consolidation_enabled": {
-        "description": "启用日结系统",
-        "type": "bool",
-        "default": true,
-        "hint": "开启后昨日回响会注入今日 Prompt，影响情感基调。"
-      }
-    }
+  "emotion_enabled": {
+    "description": "启用情感系统",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 Bot 会有能量、心情等状态变化，并注入 Prompt。"
   },
-  "memory": {
-    "type": "object",
-    "description": "私聊记忆",
-    "hint": "私聊上下文记忆与用户画像。",
-    "items": {
-      "memory_enabled": {
-        "description": "启用记忆系统",
-        "type": "bool",
-        "default": true,
-        "hint": "开启后 Bot 会记录对话历史并在 Prompt 中注入。"
-      },
-      "memory_max_turns": {
-        "description": "记忆轮数",
-        "type": "int",
-        "default": 10,
-        "hint": "注入 Prompt 的最近对话轮数（用户+Bot 各一句算一轮）。"
-      },
-      "profile_enabled": {
-        "description": "启用用户画像",
-        "type": "bool",
-        "default": true,
-        "hint": "开启后 Bot 会维护对用户的了解（偏好、特征等）。"
-      }
-    }
+  "emotion_decay_per_hour": {
+    "description": "每小时自然衰减",
+    "type": "float",
+    "default": 2.0,
+    "hint": "能量和心情每小时自然下降的值。"
   },
-  "behavior": {
-    "type": "object",
-    "description": "行为控制",
-    "hint": "私聊中的行为边界与特殊响应。",
-    "items": {
-      "ignore_group_chat": {
-        "description": "仅在私聊生效",
-        "type": "bool",
-        "default": true,
-        "hint": "开启后人格系统只在私聊中生效，群聊保持原有行为。"
-      },
-      "greeting_on_first_chat": {
-        "description": "首次私聊问候",
-        "type": "bool",
-        "default": true,
-        "hint": "第一次和某个用户私聊时，主动发送问候语。"
-      },
-      "goodnight_hint_enabled": {
-        "description": "夜间温柔提示",
-        "type": "bool",
-        "default": true,
-        "hint": "深夜时段（23:00~06:00）在 Prompt 中注入'该睡了'的温柔提示。"
-      }
-    }
+  "emotion_recovery_per_reply": {
+    "description": "每次回复恢复量",
+    "type": "float",
+    "default": 3.0,
+    "hint": "Bot 回复用户后心情和能量的恢复值。"
   },
-  "debug": {
-    "type": "object",
-    "description": "调试",
-    "hint": "开发与排错选项。",
-    "items": {
-      "debug_log_enabled": {
-        "description": "输出调试日志",
-        "type": "bool",
-        "default": false,
-        "hint": "生产环境建议关闭。"
-      }
-    }
+  "emotion_injection_style": {
+    "description": "情感注入风格",
+    "type": "string",
+    "default": "narrative",
+    "hint": "narrative = 叙事型（如'有点累，但见到你心情好了点'）；status = 状态型（如'能量: 80/100'）。"
+  },
+  "effect_enabled": {
+    "description": "启用 Effect 系统",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 Bot 会根据互动结果产生心绪变化（wronged/lonely/tired 等）。"
+  },
+  "effect_auto_trigger": {
+    "description": "自动触发 Effect",
+    "type": "bool",
+    "default": true,
+    "hint": "自动根据用户消息和状态触发 Effect。关闭后可全部手动管理。"
+  },
+  "todo_enabled": {
+    "description": "启用 Todo 系统",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 Bot 会维护脑内待办并在 Prompt 中注入。"
+  },
+  "todo_auto_trigger": {
+    "description": "自动触发 Todo",
+    "type": "bool",
+    "default": true,
+    "hint": "自动根据状态和 Effect 生成 Todo。关闭后可全部手动管理。"
+  },
+  "consolidation_enabled": {
+    "description": "启用日结系统",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后昨日回响会注入今日 Prompt，影响情感基调。"
+  },
+  "memory_enabled": {
+    "description": "启用记忆系统",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 Bot 会记录对话历史并在 Prompt 中注入。"
+  },
+  "memory_max_turns": {
+    "description": "记忆轮数",
+    "type": "int",
+    "default": 10,
+    "hint": "注入 Prompt 的最近对话轮数（用户+Bot 各一句算一轮）。"
+  },
+  "profile_enabled": {
+    "description": "启用用户画像",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 Bot 会维护对用户的了解（偏好、特征等）。"
+  },
+  "ignore_group_chat": {
+    "description": "仅在私聊生效",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后人格系统只在私聊中生效，群聊保持原有行为。"
+  },
+  "greeting_on_first_chat": {
+    "description": "首次私聊问候",
+    "type": "bool",
+    "default": true,
+    "hint": "第一次和某个用户私聊时，主动发送问候语。"
+  },
+  "goodnight_hint_enabled": {
+    "description": "夜间温柔提示",
+    "type": "bool",
+    "default": true,
+    "hint": "深夜时段（23:00~06:00）在 Prompt 中注入'该睡了'的温柔提示。"
+  },
+  "debug_log_enabled": {
+    "description": "输出调试日志",
+    "type": "bool",
+    "default": false,
+    "hint": "生产环境建议关闭。"
   }
 }
