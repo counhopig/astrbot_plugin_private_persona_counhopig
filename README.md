@@ -51,7 +51,7 @@
 
 ## 安装
 
-1. 将本插件文件夹复制到 AstrBot 的 `plugins/` 目录下。
+1. 将本插件文件夹复制到 AstrBot 的 `data/plugins/` 目录下。
 2. 重启 AstrBot，或在管理后台重载插件。
 3. 进入 **插件配置 → 私聊人格**，修改人格设定、开关与阈值。
 
@@ -230,6 +230,6 @@ plugin_data/
 
 ---
 
-## License
+## 开源协议
 
-MIT
+MIT License
