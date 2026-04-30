@@ -30,11 +30,12 @@ from .models import (
 
 
 class PersonaStorage:
-    _CACHE_MAX = 200  # 最多缓存的用户数，超出时淘汰最久未访问的
+    _CACHE_MAX = 200  # 默认缓存上限，可由外部传入覆盖
 
-    def __init__(self, data_dir: Path):
+    def __init__(self, data_dir: Path, cache_max: int = 200):
         self.data_dir = data_dir
         self.data_dir.mkdir(parents=True, exist_ok=True)
+        self._cache_max = cache_max
         self._cache: OrderedDict[str, dict] = OrderedDict()
         # 记录每个用户上一次（当前消息之前）的交互时间，供 lonely 检测使用
         self._prev_interaction_times: Dict[str, float] = {}
@@ -53,7 +54,7 @@ class PersonaStorage:
                 with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 self._cache[user_id] = data
-                if len(self._cache) > self._CACHE_MAX:
+                if len(self._cache) > self._cache_max:
                     self._cache.popitem(last=False)
                 return data
             except Exception as e:
@@ -67,7 +68,7 @@ class PersonaStorage:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             self._cache[user_id] = data
             self._cache.move_to_end(user_id)
-            if len(self._cache) > self._CACHE_MAX:
+            if len(self._cache) > self._cache_max:
                 self._cache.popitem(last=False)
         except Exception as e:
             logger.warning(f"[PersonaStorage] 保存 {user_id} 数据失败: {e}")
@@ -489,3 +490,27 @@ class PersonaStorage:
         for f in facts:
             lines.append(f"  · [{f.category}] {f.content}")
         return "\n".join(lines)
+
+    # ---------- Turn Counters ----------
+
+    def get_turn_counter(self, user_id: str, key: str) -> int:
+        """读取持久化的轮数计数器（key 如 'reflection' / 'profile'）。"""
+        data = self._load(user_id)
+        return data.get("turn_counters", {}).get(key, 0)
+
+    def increment_turn_counter(self, user_id: str, key: str) -> int:
+        """将指定轮数计数器 +1 并持久化，返回新值。"""
+        data = self._load(user_id)
+        counters = data.get("turn_counters", {})
+        counters[key] = counters.get(key, 0) + 1
+        data["turn_counters"] = counters
+        self._save(user_id, data)
+        return counters[key]
+
+    def reset_turn_counter(self, user_id: str, key: str):
+        """将指定轮数计数器清零并持久化。"""
+        data = self._load(user_id)
+        counters = data.get("turn_counters", {})
+        counters[key] = 0
+        data["turn_counters"] = counters
+        self._save(user_id, data)

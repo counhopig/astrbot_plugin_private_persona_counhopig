@@ -2,12 +2,10 @@
 反思引擎：自动分析对话历史，生成自我校准记录
 """
 
-import json
-import re
-
 from ..config import PluginConfig
 from ..models import ReflectionRecord
 from ..storage import PersonaStorage
+from .utils import extract_json
 
 
 class ReflectionEngine:
@@ -114,28 +112,10 @@ class ReflectionEngine:
         return record
 
     def _extract_json(self, text: str) -> dict:
-        """从 LLM 输出中提取 JSON"""
-        # 尝试找 ```json ... ``` 包裹的内容
-        pattern = r"```json\s*(.*?)\s*```"
-        match = re.search(pattern, text, re.DOTALL)
-        if match:
-            json_str = match.group(1)
-        else:
-            # 尝试找最外层的大括号
-            start = text.find("{")
-            end = text.rfind("}")
-            if start != -1 and end != -1 and end > start:
-                json_str = text[start:end + 1]
-            else:
-                json_str = text
-
-        try:
-            return json.loads(json_str)
-        except json.JSONDecodeError:
-            return {
-                "summary": text[:200],
-                "self_evaluation": "",
-                "emotion_change": "",
-                "facts": [],
-                "bias_correction": "",
-            }
+        return extract_json(text, fallback={
+            "summary": text[:200],
+            "self_evaluation": "",
+            "emotion_change": "",
+            "facts": [],
+            "bias_correction": "",
+        })

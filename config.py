@@ -56,5 +56,8 @@ class PluginConfig:
         self.greeting_on_first_chat = c.get("greeting_on_first_chat", True)
         self.goodnight_hint_enabled = c.get("goodnight_hint_enabled", True)
 
+        # storage
+        self.storage_cache_max = int(c.get("storage_cache_max", 200))
+
         # debug
         self.debug_log_enabled = c.get("debug_log_enabled", False)

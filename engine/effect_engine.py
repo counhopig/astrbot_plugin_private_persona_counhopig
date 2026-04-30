@@ -15,12 +15,17 @@ class EffectEngine:
     def __init__(self, storage: PersonaStorage):
         self.storage = storage
 
+    def _has_active_effect(self, user_id: str, effect_type: str) -> bool:
+        """检查指定类型的 Effect 是否已存在且活跃，用于去重。"""
+        active = self.storage.get_active_effects(user_id)
+        return any(e.effect_type == effect_type for e in active)
+
     def auto_trigger(self, user_id: str, msg_text: str, outcome: InteractionOutcome):
         now = time.time()
         emotion = self.storage.get_emotion(user_id)
 
         # 1. 被冷落 / hostile → wronged
-        if outcome == InteractionOutcome.MISSED:
+        if outcome == InteractionOutcome.MISSED and not self._has_active_effect(user_id, "wronged"):
             self.storage.add_effect(
                 user_id,
                 effect_type="wronged",
@@ -33,7 +38,7 @@ class EffectEngine:
             logger.debug(f"[EffectEngine] triggered wronged for {user_id}")
 
         # 2. 尴尬 → awkward
-        if outcome == InteractionOutcome.AWKWARD:
+        if outcome == InteractionOutcome.AWKWARD and not self._has_active_effect(user_id, "awkward"):
             self.storage.add_effect(
                 user_id,
                 effect_type="awkward",
@@ -54,7 +59,7 @@ class EffectEngine:
         else:
             hours_since = 0.0  # 首次交互，不触发 lonely
 
-        if hours_since > 6:
+        if hours_since > 6 and not self._has_active_effect(user_id, "lonely"):
             self.storage.add_effect(
                 user_id,
                 effect_type="lonely",
@@ -68,7 +73,7 @@ class EffectEngine:
 
         # 4. 深夜低能量 → tired
         hour = datetime.now().hour
-        if (hour >= 23 or hour < 2) and emotion.energy < 40:
+        if (hour >= 23 or hour < 2) and emotion.energy < 40 and not self._has_active_effect(user_id, "tired"):
             self.storage.add_effect(
                 user_id,
                 effect_type="tired",

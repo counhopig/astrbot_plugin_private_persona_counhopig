@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.4.0] - 2026-05-01
+
+### Added
+- `storage.py`：`PersonaStorage.__init__` 新增 `cache_max` 参数，允许外部配置 LRU 缓存上限
+- `config.py`：新增 `storage_cache_max` 配置项（默认 200），通过 AstrBot 后台即可调整缓存大小
+- `storage.py`：新增 `increment_turn_counter` / `reset_turn_counter` / `get_turn_counter`，将反思与画像构建的轮数计数器持久化到用户 JSON，插件重启后不再丢失计数
+- `engine/utils.py`：提取公共 `extract_json` 函数，统一 LLM 输出的 JSON 解析逻辑
+- `models.py`：新增 `_safe_from_dict` 兼容性反序列化辅助函数，加载旧格式数据时自动忽略未知字段，支持数据模型向前演进
+
+### Fixed
+- `engine/effect_engine.py`：新增 `_has_active_effect` 去重检查，避免同一类型的 Effect（wronged / awkward / lonely / tired）重复叠加
+- `engine/interaction.py`：`_COLD_KEYWORDS` 改为精确匹配（`_COLD_EXACT`），"好"等单字只在消息完全等于该词时才判为 AWKWARD，大幅降低误判率
+- `main.py`：`_turn_counters` / `_profile_turn_counters` 由内存 dict 改为持久化存储，`InteractionMode` 提前到模块顶层导入
+- `tests/test_effect_engine.py`：修复 lonely 相关测试，改用 `record_interaction` + `_prev_interaction_times` 而非已废弃的 `profile.last_seen`
+
+### Changed
+- `engine/profile_builder.py`、`engine/reflection_engine.py`：内联的 `_extract_json` 统一替换为 `engine/utils.extract_json`，消除重复代码
+- `models.py`：所有 dataclass 的 `from_dict` 改用 `_safe_from_dict`，提升数据兼容性
+
 ## [2.3.1] - 2026-05-01
 
 ### Fixed

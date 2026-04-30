@@ -3,12 +3,10 @@
 也提供 upsert_cognitive_memory 工具给 LLM 主动调用
 """
 
-import json
-import re
-
 from ..config import PluginConfig
 from ..models import ProfileFact
 from ..storage import PersonaStorage
+from .utils import extract_json
 
 
 class ProfileBuilder:
@@ -100,20 +98,4 @@ class ProfileBuilder:
         )
 
     def _extract_json(self, text: str) -> dict:
-        """从 LLM 输出中提取 JSON"""
-        pattern = r"```json\s*(.*?)\s*```"
-        match = re.search(pattern, text, re.DOTALL)
-        if match:
-            json_str = match.group(1)
-        else:
-            start = text.find("{")
-            end = text.rfind("}")
-            if start != -1 and end != -1 and end > start:
-                json_str = text[start:end + 1]
-            else:
-                json_str = text
-
-        try:
-            return json.loads(json_str)
-        except json.JSONDecodeError:
-            return {"facts": []}
+        return extract_json(text, fallback={"facts": []})

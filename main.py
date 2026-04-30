@@ -14,6 +14,7 @@ from astrbot.api.star import Context, Star, register
 
 from .config import PluginConfig
 from .storage import PersonaStorage
+from .models import InteractionMode
 from .engine.prompt_builder import PromptBuilder
 from .engine.interaction import judge_outcome
 from .engine.effect_engine import EffectEngine
@@ -40,17 +41,13 @@ class PrivatePersonaPlugin(Star):
 
         # 初始化各层
         self.cfg = PluginConfig(self.raw_config)
-        self.storage = PersonaStorage(self.data_dir)
+        self.storage = PersonaStorage(self.data_dir, cache_max=self.cfg.storage_cache_max)
         self.prompt_builder = PromptBuilder(self.cfg, self.storage)
         self.effect_engine = EffectEngine(self.storage)
         self.todo_engine = TodoEngine(self.storage)
         self.reflection_engine = ReflectionEngine(self.storage, self.cfg)
         self.profile_builder = ProfileBuilder(self.storage, self.cfg)
         self.cmd = CommandHandlers(self.cfg, self.storage)
-
-        # 轮数计数器（用于触发反思和画像构建）
-        self._turn_counters: dict[str, int] = {}
-        self._profile_turn_counters: dict[str, int] = {}
 
         logger.info(f"[PrivatePersona] 插件已加载，人格: {self.cfg.persona_name}")
 
@@ -134,7 +131,6 @@ class PrivatePersonaPlugin(Star):
             self._debug(f"记录用户消息: {msg_text[:40]}")
 
         if is_private:
-            from .models import InteractionMode
             outcome = judge_outcome(msg_text)
             self.storage.record_interaction(user_id, InteractionMode.PASSIVE, outcome)
             self._debug(f"记录互动: passive / {outcome.value}")
@@ -144,17 +140,17 @@ class PrivatePersonaPlugin(Star):
             if self.cfg.todo_enabled and self.cfg.todo_auto_trigger:
                 self.todo_engine.auto_trigger(user_id, msg_text, outcome)
 
-            # 轮数计数，触发反思和画像构建
+            # 轮数计数，触发反思和画像构建（持久化到用户 JSON，重启后不丢失）
             if self.cfg.reflection_enabled:
-                self._turn_counters[user_id] = self._turn_counters.get(user_id, 0) + 1
-                if self._turn_counters[user_id] >= self.cfg.reflection_trigger_turns:
-                    self._turn_counters[user_id] = 0
+                count = self.storage.increment_turn_counter(user_id, "reflection")
+                if count >= self.cfg.reflection_trigger_turns:
+                    self.storage.reset_turn_counter(user_id, "reflection")
                     await self._run_reflection(user_id)
 
             if self.cfg.profile_building_enabled:
-                self._profile_turn_counters[user_id] = self._profile_turn_counters.get(user_id, 0) + 1
-                if self._profile_turn_counters[user_id] >= self.cfg.profile_building_trigger_turns:
-                    self._profile_turn_counters[user_id] = 0
+                count = self.storage.increment_turn_counter(user_id, "profile")
+                if count >= self.cfg.profile_building_trigger_turns:
+                    self.storage.reset_turn_counter(user_id, "profile")
                     await self._run_profile_building(user_id)
 
     @staticmethod

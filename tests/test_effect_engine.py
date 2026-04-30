@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from astrbot_plugin_private_persona_counhopig.storage import PersonaStorage
-from astrbot_plugin_private_persona_counhopig.models import InteractionOutcome
+from astrbot_plugin_private_persona_counhopig.models import InteractionOutcome, InteractionMode
 from astrbot_plugin_private_persona_counhopig.engine.effect_engine import EffectEngine
 
 
@@ -33,20 +33,19 @@ class TestEffectAutoTrigger:
 
     def test_long_gap_creates_lonely(self, engine):
         eff_engine, storage = engine
-        # simulate last interaction 7 hours ago
-        profile = storage.get_profile("u1")
-        profile.last_seen = time.time() - 7 * 3600
-        storage.save_profile("u1", profile)
+        # 先记录一次历史互动，使 _prev_interaction_times 有值
+        storage.record_interaction("u1", InteractionMode.PASSIVE, InteractionOutcome.CONNECTED)
+        # 手动将上一次交互时间设置为 7 小时前，模拟长时间未互动
+        storage._prev_interaction_times["u1"] = time.time() - 7 * 3600
         eff_engine.auto_trigger("u1", "hi", InteractionOutcome.CONNECTED)
         effects = storage.get_active_effects("u1")
         assert any(e.effect_type == "lonely" for e in effects)
 
     def test_no_lonely_if_recent(self, engine):
         eff_engine, storage = engine
-        # set last_seen to now to avoid lonely trigger
-        profile = storage.get_profile("u1")
-        profile.last_seen = time.time()
-        storage.save_profile("u1", profile)
+        # 先记录一次历史互动，将上次交互时间设为 1 小时前（未超过 6 小时阈值）
+        storage.record_interaction("u1", InteractionMode.PASSIVE, InteractionOutcome.CONNECTED)
+        storage._prev_interaction_times["u1"] = time.time() - 1 * 3600
         eff_engine.auto_trigger("u1", "hi", InteractionOutcome.CONNECTED)
         effects = storage.get_active_effects("u1")
         assert not any(e.effect_type == "lonely" for e in effects)

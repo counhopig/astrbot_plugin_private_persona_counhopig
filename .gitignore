@@ -1,13 +1,59 @@
+# ── Python ──────────────────────────────────────────────────
 __pycache__/
-*.pyc
-*.pyo
+*.py[cod]
 *.pyd
-.Python
+*.pyo
 *.so
 *.egg
 *.egg-info/
+*.egg-link
+.eggs/
 dist/
 build/
+MANIFEST
+wheels/
+
+# ── Virtual environments ─────────────────────────────────────
+.venv/
+venv/
+env/
+.env/
+ENV/
+
+# ── Environment / secrets ────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.secret
+
+# ── Plugin runtime data ──────────────────────────────────────
 data/
 *.log
+*.log.*
+
+# ── Testing & coverage ───────────────────────────────────────
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.tox/
+.nox/
+
+# ── Type checkers & linters ──────────────────────────────────
+.mypy_cache/
+.ruff_cache/
+.pytype/
+
+# ── IDEs & editors ───────────────────────────────────────────
 .DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ── Misc ─────────────────────────────────────────────────────
+.Python
+*.orig
+*.bak

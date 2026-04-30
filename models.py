@@ -5,9 +5,15 @@
 
 import time
 import uuid
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field, asdict, fields as dc_fields
 from datetime import datetime
 from enum import Enum
+
+
+def _safe_from_dict(cls, d: dict):
+    """兼容性反序列化：忽略 d 中多余的 key，允许数据模型向前演进。"""
+    known = {f.name for f in dc_fields(cls)}
+    return cls(**{k: v for k, v in d.items() if k in known})
 
 
 # ============================================================
@@ -48,7 +54,7 @@ class EmotionState:
 
     @classmethod
     def from_dict(cls, d: dict) -> "EmotionState":
-        return cls(**d)
+        return _safe_from_dict(cls, d)
 
     def decay(self, amount: float):
         self.energy = max(0.0, self.energy - amount)
@@ -106,7 +112,7 @@ class UserProfile:
 
     @classmethod
     def from_dict(cls, d: dict) -> "UserProfile":
-        return cls(**d)
+        return _safe_from_dict(cls, d)
 
 
 @dataclass
@@ -120,7 +126,7 @@ class ChatTurn:
 
     @classmethod
     def from_dict(cls, d: dict) -> "ChatTurn":
-        return cls(**d)
+        return _safe_from_dict(cls, d)
 
 
 @dataclass
@@ -140,7 +146,7 @@ class Effect:
 
     @classmethod
     def from_dict(cls, d: dict) -> "Effect":
-        return cls(**d)
+        return _safe_from_dict(cls, d)
 
     def current_intensity(self, now: float) -> float:
         if now >= self.expires_at:
@@ -192,7 +198,7 @@ class Todo:
 
     @classmethod
     def from_dict(cls, d: dict) -> "Todo":
-        return cls(**d)
+        return _safe_from_dict(cls, d)
 
 
 @dataclass
@@ -206,7 +212,7 @@ class InteractionEvent:
 
     @classmethod
     def from_dict(cls, d: dict) -> "InteractionEvent":
-        return cls(**d)
+        return _safe_from_dict(cls, d)
 
 
 @dataclass
@@ -227,7 +233,7 @@ class Consolidation:
 
     @classmethod
     def from_dict(cls, d: dict) -> "Consolidation":
-        return cls(**d)
+        return _safe_from_dict(cls, d)
 
 
 @dataclass
@@ -245,7 +251,7 @@ class ProfileFact:
 
     @classmethod
     def from_dict(cls, d: dict) -> "ProfileFact":
-        return cls(**d)
+        return _safe_from_dict(cls, d)
 
 
 @dataclass
@@ -263,7 +269,7 @@ class ReflectionRecord:
 
     @classmethod
     def from_dict(cls, d: dict) -> "ReflectionRecord":
-        return cls(**d)
+        return _safe_from_dict(cls, d)
 
     def explicit_facts(self) -> list[str]:
         """解析 facts_str 为列表"""
@@ -285,4 +291,4 @@ class ReflectionSession:
 
     @classmethod
     def from_dict(cls, d: dict) -> "ReflectionSession":
-        return cls(**d)
+        return _safe_from_dict(cls, d)
