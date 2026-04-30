@@ -28,7 +28,7 @@ from .commands.handlers import CommandHandlers
     "astrbot_plugin_private_persona_counhopig",
     "Sisyphus",
     "AstrBot 私聊人格插件 —— 人格、情感、Effect、Todo、记忆与日结",
-    "2.6.0",
+    "2.7.0",
 )
 class PrivatePersonaPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
@@ -54,6 +54,22 @@ class PrivatePersonaPlugin(Star):
     def _debug(self, msg: str):
         if self.cfg.debug_log_enabled:
             logger.debug(f"[PrivatePersona] {msg}")
+
+    # ============================================================
+    # 插件互联 API（供其他 AstrBot 插件调用）
+    # ============================================================
+
+    def get_emotion(self, user_id: str) -> dict:
+        """返回用户情感状态字典：energy/mood/social_need/last_update。"""
+        return self.storage.get_emotion(user_id).to_dict()
+
+    def get_affinity(self, user_id: str) -> float:
+        """返回用户好感度（0~100）。"""
+        return self.storage.get_affinity(user_id)
+
+    def get_persona_snapshot(self, user_id: str) -> dict:
+        """返回完整人格快照，适用于跨插件联动读取。"""
+        return self.storage.get_persona_snapshot(user_id)
 
     # ============================================================
     # 生命周期

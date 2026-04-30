@@ -119,6 +119,46 @@ class PersonaStorage:
         self.save_profile(user_id, profile)
         return profile
 
+    def get_affinity(self, user_id: str) -> float:
+        """读取用户好感度，范围 0~100。"""
+        return self.get_profile(user_id).affinity
+
+    def get_persona_snapshot(self, user_id: str) -> dict:
+        """返回插件互联用的人格状态快照（纯 JSON 结构）。"""
+        now = time.time()
+        emotion = self.get_emotion(user_id)
+        profile = self.get_profile(user_id)
+        effects = self.get_active_effects(user_id)
+        todos = self.get_active_todos(user_id)
+
+        return {
+            "user_id": user_id,
+            "emotion": emotion.to_dict(),
+            "emotion_narrative": emotion.narrative(),
+            "affinity": profile.affinity,
+            "nickname": profile.nickname,
+            "chat_count": profile.chat_count,
+            "active_effects": [
+                {
+                    "id": e.id,
+                    "type": e.effect_type,
+                    "source": e.source_detail,
+                    "intensity": round(e.current_intensity(now), 2),
+                    "expires_at": e.expires_at,
+                }
+                for e in effects
+            ],
+            "active_todos": [
+                {
+                    "id": t.id,
+                    "type": t.todo_type,
+                    "content": t.content,
+                    "priority": t.priority,
+                }
+                for t in todos
+            ],
+        }
+
     # ---------- Memory ----------
 
     def get_history(self, user_id: str) -> List[ChatTurn]:

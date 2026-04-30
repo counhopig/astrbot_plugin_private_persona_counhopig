@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7.0] - 2026-05-01
+
+### Added
+- 插件互联 API：`main.py` 暴露 `get_emotion(user_id)` / `get_affinity(user_id)` / `get_persona_snapshot(user_id)`，供其他 AstrBot 插件读取人格状态
+- `storage.py`：新增 `get_affinity(user_id)` 与 `get_persona_snapshot(user_id)`，统一输出纯 JSON 可消费数据结构，降低跨插件集成成本
+- `tests/test_storage.py`：新增互联 API 相关单元测试，覆盖好感度读取与人格快照输出
+
 ## [2.6.0] - 2026-05-01
 
 ### Added

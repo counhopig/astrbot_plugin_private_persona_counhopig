@@ -59,6 +59,13 @@ class TestProfileStorage:
         assert p2.chat_count == 2
         assert p2.nickname == "Alice"  # should not overwrite
 
+    def test_get_affinity(self, tmp_storage):
+        assert tmp_storage.get_affinity("user1") == 50.0
+        p = tmp_storage.get_profile("user1")
+        p.affinity = 82
+        tmp_storage.save_profile("user1", p)
+        assert tmp_storage.get_affinity("user1") == 82.0
+
 
 class TestMemoryStorage:
     def test_append_and_get_history(self, tmp_storage):
@@ -186,3 +193,20 @@ class TestAdminStorage:
     def test_file_path_sanitization(self, tmp_storage):
         path = tmp_storage._file_path("user/../123")
         assert ".." not in str(path)
+
+
+class TestInterPluginApiStorage:
+    def test_get_persona_snapshot(self, tmp_storage):
+        tmp_storage.touch_profile("user1", nickname="Alice")
+        e = EmotionState(energy=66, mood=77, social_need=44)
+        tmp_storage.save_emotion("user1", e)
+        tmp_storage.add_effect("user1", "lonely", 70, "很久没聊天", duration_hours=10)
+        tmp_storage.add_todo("user1", TodoType.SOCIAL, "想和你说说今天")
+
+        snapshot = tmp_storage.get_persona_snapshot("user1")
+        assert snapshot["user_id"] == "user1"
+        assert snapshot["emotion"]["energy"] == 66.0
+        assert snapshot["affinity"] == 50.0
+        assert snapshot["nickname"] == "Alice"
+        assert len(snapshot["active_effects"]) == 1
+        assert len(snapshot["active_todos"]) == 1

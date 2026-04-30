@@ -89,6 +89,36 @@
 
 ---
 
+## 插件互联 API
+
+为支持 AstrBot 插件生态联动，本插件在主类 `PrivatePersonaPlugin` 上公开了可读接口，其他插件可直接读取人格状态。
+
+### 已暴露接口
+
+- `get_emotion(user_id)`：返回情感状态字典（`energy` / `mood` / `social_need` / `last_update`）
+- `get_affinity(user_id)`：返回好感度（0~100）
+- `get_persona_snapshot(user_id)`：返回完整人格快照（情感、好感度、活跃心绪、活跃待办、昵称、聊天次数）
+
+### 联动示例（伪代码）
+
+```python
+# 在其他 AstrBot 插件中
+persona_plugin = await self.context.get_registered_star("astrbot_plugin_private_persona_counhopig")
+if persona_plugin:
+    emotion = persona_plugin.get_emotion(user_id)
+    affinity = persona_plugin.get_affinity(user_id)
+    snapshot = persona_plugin.get_persona_snapshot(user_id)
+
+    # 例如：根据好感度调整你的插件行为
+    if affinity >= 80:
+        # 给出更亲密的互动逻辑
+        pass
+```
+
+> 提示：不同 AstrBot 版本获取插件实例的 API 名称可能略有差异，但只要拿到本插件实例，即可直接调用上述方法。
+
+---
+
 ## 配置项
 
 在 AstrBot 管理后台的 `_conf_schema.json` 可视化界面中配置：
