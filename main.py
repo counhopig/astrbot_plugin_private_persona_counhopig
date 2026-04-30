@@ -423,9 +423,11 @@ class PrivatePersonaPlugin(Star):
         if event.get_group_id():
             return
         profile = self.storage.get_profile(event.get_sender_id())
-        # chat_count 在 on_message_listener 中更新，此时尚未更新，所以首次值为 0
         if profile.chat_count > 0:
             return
+        # 立即标记已问候（递增 chat_count），防止 greeting 短路 LLM 管道后
+        # on_llm_request 的 touch_profile 永不执行，导致重复发送问候消息。
+        self.storage.touch_profile(event.get_sender_id(), event.get_sender_name() or "")
         name = self.cfg.persona_name
         yield event.plain_result(
             f"嗨～我是 {name} ✨\n"
