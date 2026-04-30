@@ -1,5 +1,7 @@
 # AstrBot 私聊人格插件
 
+> 🤖 **本插件的全部代码、架构设计、功能规划与文档，均由 AI（GitHub Copilot · Claude Sonnet）全程管理和撰写，作者仅提供产品方向与验收。**
+
 为 AstrBot 的**私聊场景**注入可配置的人格、情感状态、Effect、Todo 与日结。
 
 本插件参考 [astrbot_plugin_self_evolution](https://github.com/Renyus/astrbot_plugin_self_evolution) 的 Persona Sim / Effect / Todo / Consolidation 架构，聚焦私聊单人陪伴场景，去掉群聊复杂度与重量级依赖，提供开箱即用的"人格生活模拟"体验。
