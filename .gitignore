@@ -28,6 +28,7 @@ ENV/
 
 # ── Plugin runtime data ──────────────────────────────────────
 data/
+plugin_data/
 *.log
 *.log.*
 

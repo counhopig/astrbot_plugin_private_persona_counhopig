@@ -5,12 +5,18 @@ AstrBot 私聊人格插件 —— 主入口
 模块化设计：models → storage → engine → commands → main
 """
 
+import shutil
 from pathlib import Path
 
 from astrbot.api import logger
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.provider import ProviderRequest
 from astrbot.api.star import Context, Star, register
+
+try:
+    from astrbot.api.star import StarTools
+except Exception:  # pragma: no cover
+    StarTools = None
 
 from .config import PluginConfig
 from .storage import PersonaStorage
@@ -35,9 +41,10 @@ class PrivatePersonaPlugin(Star):
         super().__init__(context)
         self.raw_config = config or {}
 
-        # 数据目录
-        self.data_dir = Path(__file__).parent / "data"
+        # 数据目录：优先使用 AstrBot 规范的 plugin_data 目录
+        self.data_dir = self._resolve_data_dir()
         self.data_dir.mkdir(parents=True, exist_ok=True)
+        self._migrate_legacy_data_dir()
 
         # 初始化各层
         self.cfg = PluginConfig(self.raw_config)
@@ -50,6 +57,33 @@ class PrivatePersonaPlugin(Star):
         self.cmd = CommandHandlers(self.cfg, self.storage)
 
         logger.info(f"[PrivatePersona] 插件已加载，人格: {self.cfg.persona_name}")
+
+    def _resolve_data_dir(self) -> Path:
+        if StarTools and hasattr(StarTools, "get_data_dir"):
+            try:
+                return Path(StarTools.get_data_dir("astrbot_plugin_private_persona_counhopig"))
+            except Exception as e:
+                logger.warning(f"[PrivatePersona] 获取 plugin_data 目录失败，回退本地目录: {e}")
+        return Path(__file__).parent / "plugin_data"
+
+    def _migrate_legacy_data_dir(self):
+        legacy_data_dir = Path(__file__).parent / "data"
+        if not legacy_data_dir.exists() or legacy_data_dir == self.data_dir:
+            return
+
+        moved = 0
+        for old_file in legacy_data_dir.glob("*.json"):
+            new_file = self.data_dir / old_file.name
+            if new_file.exists():
+                continue
+            try:
+                shutil.move(str(old_file), str(new_file))
+                moved += 1
+            except Exception as e:
+                logger.warning(f"[PrivatePersona] 迁移历史数据失败: {old_file.name} -> {e}")
+
+        if moved:
+            logger.info(f"[PrivatePersona] 已从旧 data 目录迁移 {moved} 个用户数据文件到 plugin_data")
 
     def _debug(self, msg: str):
         if self.cfg.debug_log_enabled:

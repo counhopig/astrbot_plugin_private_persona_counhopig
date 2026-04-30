@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.7.1] - 2026-05-01
+
+### Changed
+- `main.py`：数据目录切换为 AstrBot 框架规范目录（`plugin_data`），优先通过 `StarTools.get_data_dir("astrbot_plugin_private_persona_counhopig")` 获取，避免写入插件源码目录
+- `README.md`：数据存储路径说明由 `data/` 更新为 `plugin_data/`
+- `.gitignore`：新增 `plugin_data/` 忽略规则
+
+### Added
+- `main.py`：新增旧目录数据迁移逻辑，启动时自动将本地 `data/` 下尚未迁移的用户 JSON 文件移动到 `plugin_data`，确保升级后数据连续
+
 ## [2.7.0] - 2026-05-01
 
 ### Added

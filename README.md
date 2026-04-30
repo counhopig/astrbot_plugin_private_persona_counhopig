@@ -204,10 +204,10 @@ astrbot_plugin_private_persona_counhopig/
 
 ## 数据存储
 
-所有数据以 JSON 文件形式存放在插件目录的 `data/` 下，每个用户一个文件：
+所有数据以 JSON 文件形式存放在 AstrBot 的 `plugin_data` 目录下（通过框架 API 获取），每个用户一个文件：
 
 ```
-data/
+plugin_data/
 ├── 123456789.json      # 用户数据（情感、画像、历史、Effect、Todo、Interaction、Consolidation）
 └── 987654321.json
 ```
