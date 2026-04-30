@@ -28,7 +28,7 @@ from .commands.handlers import CommandHandlers
     "astrbot_plugin_private_persona_counhopig",
     "Sisyphus",
     "AstrBot 私聊人格插件 —— 人格、情感、Effect、Todo、记忆与日结",
-    "2.3.1",
+    "2.5.0",
 )
 class PrivatePersonaPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
@@ -339,7 +339,7 @@ class PrivatePersonaPlugin(Star):
         async for r in self.cmd.cmd_remove_fact(event):
             yield r
 
-    @filter.command("persona_help", alias={"人格帮助", "pgh"})
+    @filter.command("persona_help", alias={"人格帮助", "pgh", "help", "?"})
     async def cmd_persona_help(self, event: AstrMessageEvent):
         async for r in self.cmd.cmd_help(event):
             yield r
@@ -350,14 +350,21 @@ class PrivatePersonaPlugin(Star):
 
     @filter.event_message_type(filter.EventMessageType.ALL)
     async def on_first_chat_greeting(self, event: AstrMessageEvent):
+        """首次私聊：发送一条固定的欢迎消息引导用户发现功能。"""
         if not self.cfg.greeting_on_first_chat:
             return
         if event.get_group_id():
             return
         profile = self.storage.get_profile(event.get_sender_id())
-        if profile.chat_count > 1:
+        # chat_count 在 on_message_listener 中更新，此时尚未更新，所以首次值为 0
+        if profile.chat_count > 0:
             return
-        # 不强制发送，由 Prompt 注入引导 LLM 自然问候
+        name = self.cfg.persona_name
+        yield event.plain_result(
+            f"嗨～我是 {name} ✨\n"
+            f"第一次见面，先自我介绍一下吧～\n"
+            f"发送「/persona_help」或「人格帮助」可以看看我都能做什么哦。"
+        )
 
     # ============================================================
     # 反思与画像构建

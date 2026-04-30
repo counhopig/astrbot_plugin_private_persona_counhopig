@@ -2,6 +2,7 @@
 Prompt 构建器：分层生成 System Prompt 注入块
 """
 
+import time
 from datetime import datetime
 
 from ..config import PluginConfig
@@ -18,6 +19,11 @@ class PromptBuilder:
         injections = []
 
         injections.append(self._persona())
+
+        if self.cfg.greeting_on_first_chat:
+            block = self._first_chat_hint(user_id)
+            if block:
+                injections.append(block)
 
         if self.cfg.time_awareness_enabled:
             injections.append(self._time())
@@ -110,9 +116,34 @@ class PromptBuilder:
             return f"[内心状态]\n你此刻觉得：{emotion.narrative()}。"
         return f"[状态面板]\n{emotion.status_str()}"
 
+    def _first_chat_hint(self, user_id: str) -> str:
+        profile = self.storage.get_profile(user_id)
+        if profile.chat_count > 1:
+            return ""
+        name = self.cfg.persona_name
+        return (
+            f"[首次见面]"
+            f"\n这是对方第一次和你说话。请友好地自我介绍，告诉对方你的名字是「{name}」。"
+            f"\n提示对方可以随时发送「/persona_help」或「人格帮助」查看你能做什么。"
+            f"\n语气要自然温暖，不要像说明书，更像是初次见面的朋友打招呼。"
+        )
+
     def _effect(self, user_id: str) -> str:
         narrative = self.storage.format_effects_for_prompt(user_id)
-        return f"[心绪]\n{narrative}。" if narrative else ""
+        if not narrative:
+            return ""
+        # 最强心绪 > 50% 时，引导 LLM 自然流露而非直接说出状态名
+        effects = self.storage.get_active_effects(user_id)
+        if effects:
+            now = time.time()
+            strongest = max(effects, key=lambda e: e.current_intensity(now))
+            if strongest.current_intensity(now) > 50:
+                hint = (
+                    "\n（请在回复中自然流露这种心绪——用语气词、停顿、细微的行为描写来表达，"
+                    "不要直接说出状态名称，也不要解释自己在'状态'中。）"
+                )
+                return f"[心绪]\n{narrative}。{hint}"
+        return f"[心绪]\n{narrative}。"
 
     def _todo(self, user_id: str) -> str:
         todo_str = self.storage.format_todos_for_prompt(user_id)
@@ -135,14 +166,20 @@ class PromptBuilder:
         if profile.nickname:
             parts.append(f"对方昵称：{profile.nickname}")
 
+        # 好感度称谓系统
         if profile.affinity >= 80:
-            parts.append("你们关系很好，可以开玩笑、说心里话。")
+            parts.append("你们是「知己」——关系很好，可以开玩笑、说心里话，语气可以更亲密。")
         elif profile.affinity >= 60:
-            parts.append("你们比较熟络。")
+            parts.append("你们是「好朋友」——比较熟络，可以轻松聊天。")
         elif profile.affinity >= 30:
-            parts.append("你们刚认识不久。")
+            parts.append("你们是「普通朋友」——刚认识不久，保持自然友善就好。")
         else:
-            parts.append("你们还不太熟，保持一点距离感。")
+            parts.append("你们是「陌生人」——还不太熟，保持一点礼貌距离感。")
+
+        # 里程碑纪念日提示
+        chat_count = profile.chat_count
+        if chat_count in (10, 50, 100, 200, 500):
+            parts.append(f"（你们已经聊了 {chat_count} 次了，可以在合适时候自然地提一提。）")
 
         if profile.notes:
             parts.append(f"你对TA的了解：{profile.notes}")

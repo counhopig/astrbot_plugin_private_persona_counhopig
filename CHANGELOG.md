@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.5.0] - 2026-05-01
+
+### Added
+- `engine/prompt_builder.py`：新增 `_first_chat_hint()`，当用户 `chat_count <= 1` 时向 LLM 注入首次见面指引，引导其自然自我介绍并告知 `/persona_help` 入口
+- `main.py`：实现 `on_first_chat_greeting()`，修复原来的空占位函数——首次私聊时立即发送固定欢迎消息（含 help 提示），修正了竞争条件（由 `chat_count > 1` 改为 `== 0`）
+- `engine/prompt_builder.py`：Effect 自然流露增强——心绪强度 > 50% 时在 Prompt 末尾追加「自然流露」引导，避免 LLM 直接说出状态名称
+- `engine/prompt_builder.py`：好感度称谓系统——affinity 四段映射具名关系阶段（陌生人 / 普通朋友 / 好朋友 / 知己），影响 LLM 回复的亲密度与语气
+- `engine/prompt_builder.py`：里程碑纪念日 Prompt 提示——聊天满 10 / 50 / 100 / 200 / 500 次时注入纪念日提示，由 LLM 自然提及
+- `commands/handlers.py`：`cmd_apply` 新增中文参数支持（负面 / 尴尬 / 普通 / 正面 / 化解），与英文关键字完全等价
+- `commands/handlers.py`：`cmd_help` 全面重构——按「查看状态 / 反思与画像 / 日结 / 手动调整 / 高级管理员」分组，每条指令标注快捷别名，文案面向普通用户
+- `main.py`：`persona_help` 指令新增 `help` 和 `?` 别名，降低新用户发现帮助的门槛
+
+### Changed
+- `engine/prompt_builder.py`：`import time` 补充，`_effect()` 重构以支持心绪强度判断
+
 ## [2.4.0] - 2026-05-01
 
 ### Added

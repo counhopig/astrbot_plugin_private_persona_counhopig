@@ -168,29 +168,41 @@ class CommandHandlers:
 
         if len(parts) < 2:
             yield event.plain_result(
-                "用法: /persona_apply <bad|awkward|normal|good|relief>\n"
-                "例如: /persona_apply bad  — 模拟一次负面互动"
+                "用法: /persona_apply <影响类型>\n"
+                "可选值（英文或中文均可）:\n"
+                "  bad / 负面     — 模拟一次负面互动\n"
+                "  awkward / 尴尬 — 模拟一次尴尬互动\n"
+                "  normal / 普通  — 普通互动\n"
+                "  good / 正面    — 正面互动\n"
+                "  relief / 化解  — 化解尴尬"
             )
             return
 
         quality = parts[1].strip().lower()
         outcome_map = {
             "bad": InteractionOutcome.MISSED,
+            "负面": InteractionOutcome.MISSED,
             "awkward": InteractionOutcome.AWKWARD,
+            "尴尬": InteractionOutcome.AWKWARD,
             "normal": InteractionOutcome.CONNECTED,
+            "普通": InteractionOutcome.CONNECTED,
             "good": InteractionOutcome.CONNECTED,
+            "正面": InteractionOutcome.CONNECTED,
             "relief": InteractionOutcome.RELIEF,
+            "化解": InteractionOutcome.RELIEF,
         }
         outcome = outcome_map.get(quality)
         if not outcome:
-            yield event.plain_result("无效的影响类型。可选: bad, awkward, normal, good, relief")
+            yield event.plain_result(
+                "无效的影响类型。可选: bad/负面  awkward/尴尬  normal/普通  good/正面  relief/化解"
+            )
             return
 
         self.storage.record_interaction(user_id, InteractionMode.PASSIVE, outcome)
 
-        if quality == "bad":
+        if quality in ("bad", "负面"):
             self.storage.add_effect(user_id, "wronged", 60.0, "手动模拟的负面互动", "slow", "social", 4.0)
-        elif quality == "awkward":
+        elif quality in ("awkward", "尴尬"):
             self.storage.add_effect(user_id, "awkward", 40.0, "手动模拟的尴尬互动", "fast", "social", 2.0)
 
         yield event.plain_result(f"已应用互动影响: {quality} ({outcome.value})")
@@ -568,39 +580,43 @@ class CommandHandlers:
     async def cmd_help(self, event: AstrMessageEvent):
         name = self.cfg.persona_name
         help_text = (
-            f"=== {name} · 私聊人格插件 ===\n\n"
-            "[状态查看]\n"
-            "  /persona          — 查看完整人格状态\n"
-            "  /persona_effects  — 查看活跃心绪\n"
-            "  /persona_todo     — 查看脑内待办\n"
-            "  /persona_today    — 查看今日互动摘要\n"
-            "  /persona_history  — 查看最近对话历史\n\n"
-            "[日结]\n"
-            "  /persona_consolidate — 手动执行人格日结\n\n"
-            "[手动修改]\n"
-            "  /persona_set_emotion <e> <m> <s>  — 设置情感状态\n"
-            "  /persona_set_affinity <0~100>     — 直接设置好感度\n"
-            "  /persona_set_nickname <昵称>      — 设置昵称\n"
-            "  /persona_set_config <key> <value> — 动态改配置(管理员)\n"
-            "  /persona_remove_effect <ID>       — 删除指定心绪\n"
-            "  /persona_clear_effects            — 清空所有心绪\n"
-            "  /persona_clear_todos              — 清空所有待办\n"
-            "  /persona_add_effect <类型> <描述> — 添加心绪\n"
-            "  /persona_add_todo <need|social> <内容>\n"
-            "  /persona_done_todo <ID>           — 完成待办\n"
-            "  /persona_apply <bad|awkward|normal|good|relief>\n"
-            "  /persona_reset    — 重置所有记忆\n"
-            "  /persona_note     — 添加/查看备注\n"
-            "  /persona_affinity — 查看/调整好感度\n"
-            "  /persona_debug    — 查看原始数据(管理员)\n\n"
+            f"=== {name} · 私聊人格插件 ===\n"
+            "指令前缀可用 / 或 # 触发，括号内为快捷别名。\n\n"
+            "[查看状态]\n"
+            "  /persona (人格 | pg)           — 完整人格状态\n"
+            "  /persona_effects (心绪 | pfx)  — 活跃心绪列表\n"
+            "  /persona_todo (待办 | pft)     — 脑内待办\n"
+            "  /persona_today (今日人格 | ptd)— 今日互动摘要\n"
+            "  /persona_history (对话历史 | ph)— 最近对话记录\n"
+            "  /persona_affinity (好感度 | pgaf)— 查看当前好感度\n\n"
             "[反思与画像]\n"
-            "  /persona_reflections     — 查看反思记录\n"
-            "  /persona_facts           — 查看自动构建的画像事实\n"
-            "  /persona_clear_reflections — 清空反思\n"
-            "  /persona_remove_fact <ID> — 删除画像事实\n\n"
-            "[功能]\n"
-            "  · 人格注入 + 情感系统 + Effect + Todo + 记忆 + 日结 + 自动反思 + 画像构建\n\n"
-            "[配置]\n"
-            "  AstrBot 后台 → 插件配置 → 私聊人格"
+            "  /persona_reflections (反思记录 | prf) — 反思日志\n"
+            "  /persona_facts (画像事实 | pf)        — 自动构建的用户画像\n"
+            "  /persona_remove_fact <ID> (删除事实 | prmf)\n"
+            "  /persona_clear_reflections (清空反思 | pcr)\n\n"
+            "[日结]\n"
+            "  /persona_consolidate (日结 | pcn) — 手动执行日结\n\n"
+            "[手动调整]\n"
+            "  /persona_apply <影响类型> (人格影响 | pap)\n"
+            "    可选: bad/负面  awkward/尴尬  normal/普通  good/正面  relief/化解\n"
+            "  /persona_set_emotion <活力> <心情> <社交> (设置情感 | pse)\n"
+            "  /persona_set_affinity <0~100> (设置好感度 | psaf)\n"
+            "  /persona_affinity +10 或 -5     — 相对调整好感度（管理员）\n"
+            "  /persona_set_nickname <昵称> (设置昵称 | psnn)\n"
+            "  /persona_note (人格备注 | pgn)  — 查看/设置备注\n"
+            "  /persona_add_effect <类型> <描述> (添加心绪 | pafe) [管理员]\n"
+            "  /persona_remove_effect <ID> (删除心绪 | prfe)\n"
+            "  /persona_clear_effects (清空心绪 | pcfe)\n"
+            "  /persona_add_todo <need|social> <内容> (添加待办 | pat)\n"
+            "  /persona_done_todo <ID> (完成待办 | pdt)\n"
+            "  /persona_clear_todos (清空待办 | pctd)\n\n"
+            "[高级（管理员）]\n"
+            "  /persona_set_config <key> <value> (设置配置 | pscfg)\n"
+            "  /persona_debug (人格调试 | pdbg)  — 查看原始数据\n"
+            "  /persona_reset (人格重置 | pgr)   — 重置所有记忆与状态\n\n"
+            "[功能模块]\n"
+            "  · 人格注入 · 情感状态机 · 心绪(Effect) · 脑内待办\n"
+            "  · 对话记忆 · 日结 · 自动反思 · 用户画像构建\n\n"
+            "更多配置：AstrBot 后台 → 插件配置 → 私聊人格"
         )
         yield event.plain_result(help_text)
