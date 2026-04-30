@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.3.1] - 2026-05-01
+
+### Fixed
+- `engine/interaction.py`：`_COLD_KEYWORDS`（"哦/嗯/随便/无所谓"等）此前完全未被 `judge_outcome` 使用，导致冷漠回复被错误判定为 `CONNECTED`，现已补上对应分支，正确返回 `AWKWARD`
+- `engine/effect_engine.py`：lonely 检测使用 `get_today_interactions[-1]` 的时间戳，而该记录是刚写入的当前消息，导致 `hours_since ≈ 0`，lonely 永远不触发；现改用 `storage.get_prev_interaction_time()` 获取当前消息**之前**的上一次交互时间
+- `storage.py`：`on_llm_response` 中 `append_history` 与 `save_emotion` 两次独立 load+save 合并为 `append_history_and_recover_emotion`，减少一次文件 I/O
+- `main.py`：`on_llm_request` 中 `if self.cfg.ignore_group_chat and not is_private: return` 之后紧跟 `if not is_private: return`，前一行是完全多余的死条件，已移除
+
+### Changed
+- `storage.py`：`_cache` 从 `dict` 换为 `OrderedDict`，加入 LRU 淘汰上限（`_CACHE_MAX=200`），防止长期运行中内存无限增长
+
 ## [2.3.0] - 2025-04-29
 
 ### Added

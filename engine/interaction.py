@@ -18,6 +18,9 @@ def judge_outcome(msg_text: str) -> InteractionOutcome:
     for kw in _FRIENDLY_KEYWORDS:
         if kw in text:
             return InteractionOutcome.CONNECTED
+    for kw in _COLD_KEYWORDS:
+        if kw in text:
+            return InteractionOutcome.AWKWARD
     if len(msg_text.strip()) <= 2:
         return InteractionOutcome.AWKWARD
     return InteractionOutcome.CONNECTED

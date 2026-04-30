@@ -27,7 +27,7 @@ from .commands.handlers import CommandHandlers
     "astrbot_plugin_private_persona_counhopig",
     "Sisyphus",
     "AstrBot 私聊人格插件 —— 人格、情感、Effect、Todo、记忆与日结",
-    "2.3.0",
+    "2.3.1",
 )
 class PrivatePersonaPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
@@ -92,8 +92,6 @@ class PrivatePersonaPlugin(Star):
         is_private = not bool(group_id)
 
         if self.cfg.ignore_group_chat and not is_private:
-            return
-        if not is_private:
             return
 
         # 更新画像
@@ -202,11 +200,15 @@ class PrivatePersonaPlugin(Star):
         if not text:
             return
 
-        if self.cfg.memory_enabled:
+        if self.cfg.memory_enabled and self.cfg.emotion_enabled:
+            emotion = self.storage.append_history_and_recover_emotion(
+                user_id, "bot", text, self.cfg.emotion_recovery_per_reply
+            )
+            self._debug(f"记录Bot回复并恢复情感: {text[:40]} | {emotion.status_str()}")
+        elif self.cfg.memory_enabled:
             self.storage.append_history(user_id, "bot", text)
             self._debug(f"记录Bot回复: {text[:40]}")
-
-        if self.cfg.emotion_enabled:
+        elif self.cfg.emotion_enabled:
             emotion = self.storage.get_emotion(user_id)
             emotion.on_interact(self.cfg.emotion_recovery_per_reply)
             self.storage.save_emotion(user_id, emotion)

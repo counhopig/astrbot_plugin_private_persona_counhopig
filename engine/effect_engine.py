@@ -46,13 +46,13 @@ class EffectEngine:
             logger.debug(f"[EffectEngine] triggered awkward for {user_id}")
 
         # 3. 长时间未互动 → lonely
-        last_interactions = self.storage.get_today_interactions(user_id)
-        if last_interactions:
-            last_ts = last_interactions[-1].timestamp
-            hours_since = (now - last_ts) / 3600
+        # 使用上一次交互时间（record_interaction 调用前保存的值），
+        # 避免把刚记录的当前消息算作"最近一次"导致 hours_since ≈ 0
+        prev_ts = self.storage.get_prev_interaction_time(user_id)
+        if prev_ts > 0:
+            hours_since = (now - prev_ts) / 3600
         else:
-            profile = self.storage.get_profile(user_id)
-            hours_since = (now - profile.last_seen) / 3600
+            hours_since = 0.0  # 首次交互，不触发 lonely
 
         if hours_since > 6:
             self.storage.add_effect(

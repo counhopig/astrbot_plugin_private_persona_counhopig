@@ -6,6 +6,7 @@
 import json
 import time
 import uuid
+from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -29,10 +30,14 @@ from .models import (
 
 
 class PersonaStorage:
+    _CACHE_MAX = 200  # 最多缓存的用户数，超出时淘汰最久未访问的
+
     def __init__(self, data_dir: Path):
         self.data_dir = data_dir
         self.data_dir.mkdir(parents=True, exist_ok=True)
-        self._cache: Dict[str, dict] = {}
+        self._cache: OrderedDict[str, dict] = OrderedDict()
+        # 记录每个用户上一次（当前消息之前）的交互时间，供 lonely 检测使用
+        self._prev_interaction_times: Dict[str, float] = {}
 
     def _file_path(self, user_id: str) -> Path:
         safe_id = "".join(c for c in user_id if c.isalnum() or c in "-_")
@@ -40,6 +45,7 @@ class PersonaStorage:
 
     def _load(self, user_id: str) -> dict:
         if user_id in self._cache:
+            self._cache.move_to_end(user_id)
             return self._cache[user_id]
         path = self._file_path(user_id)
         if path.exists():
@@ -47,6 +53,8 @@ class PersonaStorage:
                 with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 self._cache[user_id] = data
+                if len(self._cache) > self._CACHE_MAX:
+                    self._cache.popitem(last=False)
                 return data
             except Exception as e:
                 logger.warning(f"[PersonaStorage] 加载 {user_id} 数据失败: {e}")
@@ -58,6 +66,9 @@ class PersonaStorage:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             self._cache[user_id] = data
+            self._cache.move_to_end(user_id)
+            if len(self._cache) > self._CACHE_MAX:
+                self._cache.popitem(last=False)
         except Exception as e:
             logger.warning(f"[PersonaStorage] 保存 {user_id} 数据失败: {e}")
 
@@ -122,6 +133,24 @@ class PersonaStorage:
             history = history[-100:]
         data["history"] = history
         self._save(user_id, data)
+
+    def append_history_and_recover_emotion(self, user_id: str, role: str, content: str, recovery: float):
+        """将 bot 回复追加到历史记录，同时更新情感状态，一次 load+save。"""
+        data = self._load(user_id)
+
+        history = data.get("history", [])
+        history.append(ChatTurn(role=role, content=content).to_dict())
+        if len(history) > 100:
+            history = history[-100:]
+        data["history"] = history
+
+        emotion_data = data.get("emotion")
+        emotion = EmotionState.from_dict(emotion_data) if emotion_data else EmotionState()
+        emotion.on_interact(recovery)
+        data["emotion"] = emotion.to_dict()
+
+        self._save(user_id, data)
+        return emotion
 
     def format_history_for_prompt(self, user_id: str, max_turns: int) -> str:
         history = self.get_history(user_id)
@@ -258,14 +287,24 @@ class PersonaStorage:
     # ---------- Interaction ----------
 
     def record_interaction(self, user_id: str, mode: InteractionMode, outcome: InteractionOutcome):
-        event = InteractionEvent(mode=mode.value, outcome=outcome.value)
+        # 先保存上一条交互的时间戳，供 lonely 检测使用
         data = self._load(user_id)
-        interactions = data.get("interactions", [])
-        interactions.append(event.to_dict())
-        if len(interactions) > 200:
-            interactions = interactions[-200:]
-        data["interactions"] = interactions
+        existing = data.get("interactions", [])
+        if existing:
+            self._prev_interaction_times[user_id] = existing[-1].get("timestamp", 0.0)
+        else:
+            self._prev_interaction_times.setdefault(user_id, 0.0)
+
+        event = InteractionEvent(mode=mode.value, outcome=outcome.value)
+        existing.append(event.to_dict())
+        if len(existing) > 200:
+            existing = existing[-200:]
+        data["interactions"] = existing
         self._save(user_id, data)
+
+    def get_prev_interaction_time(self, user_id: str) -> float:
+        """返回当前消息记录之前的上一次交互时间戳（0.0 表示从未交互）"""
+        return self._prev_interaction_times.get(user_id, 0.0)
 
     def get_today_interactions(self, user_id: str) -> List[InteractionEvent]:
         today = datetime.now().strftime("%Y-%m-%d")
@@ -354,6 +393,7 @@ class PersonaStorage:
         if path.exists():
             path.unlink()
         self._cache.pop(user_id, None)
+        self._prev_interaction_times.pop(user_id, None)
 
     def list_users(self) -> List[str]:
         return [f.stem for f in self.data_dir.iterdir() if f.suffix == ".json"]
