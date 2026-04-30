@@ -28,7 +28,7 @@ from .commands.handlers import CommandHandlers
     "astrbot_plugin_private_persona_counhopig",
     "Sisyphus",
     "AstrBot 私聊人格插件 —— 人格、情感、Effect、Todo、记忆与日结",
-    "2.5.0",
+    "2.6.0",
 )
 class PrivatePersonaPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
@@ -72,6 +72,20 @@ class PrivatePersonaPlugin(Star):
                 logger.info(f"[PrivatePersona] 周期性反思已注册: {self.cfg.reflection_periodic_cron}")
             except Exception as e:
                 logger.warning(f"[PrivatePersona] 注册周期性反思失败: {e}")
+
+        if self.cfg.proactive_nudge_enabled and self.cfg.proactive_nudge_cron:
+            try:
+                await self.context.cron_manager.add_basic_job(
+                    name="private_persona_proactive_nudge",
+                    cron_expression=self.cfg.proactive_nudge_cron,
+                    handler=self._proactive_nudge_job,
+                    description="私聊人格插件：寂寞时主动问候",
+                    persistent=False,
+                )
+                logger.info(f"[PrivatePersona] 主动问候已注册: {self.cfg.proactive_nudge_cron}")
+            except Exception as e:
+                logger.warning(f"[PrivatePersona] 注册主动问候失败: {e}")
+
         logger.info("[PrivatePersona] 初始化完成")
 
     @filter.on_plugin_unloaded()
@@ -131,6 +145,9 @@ class PrivatePersonaPlugin(Star):
             self._debug(f"记录用户消息: {msg_text[:40]}")
 
         if is_private:
+            # 持久化 UMO，供主动问候使用
+            self.storage.save_umo(user_id, event.unified_msg_origin)
+
             outcome = judge_outcome(msg_text)
             self.storage.record_interaction(user_id, InteractionMode.PASSIVE, outcome)
             self._debug(f"记录互动: passive / {outcome.value}")
@@ -419,6 +436,71 @@ class PrivatePersonaPlugin(Star):
             if len(history) >= 2:
                 import asyncio
                 asyncio.create_task(self._run_reflection(user_id))
+
+    def _proactive_nudge_job(self):
+        """主动问候的 cron handler（同步包装）"""
+        import asyncio
+        asyncio.create_task(self._proactive_nudge())
+
+    async def _proactive_nudge(self):
+        """遍历所有用户，当 lonely 心绪强度足够高时主动发送问候消息。"""
+        import asyncio
+        import time
+        from astrbot.core.message.message_event_result import MessageChain
+
+        now = time.time()
+        for user_id in self.storage.list_users():
+            umo = self.storage.get_umo(user_id)
+            if not umo:
+                continue
+
+            # 检查是否有活跃的 lonely effect 且强度 >= 60%
+            effects = self.storage.get_active_effects(user_id)
+            lonely_effects = [e for e in effects if e.effect_type == "lonely"]
+            if not lonely_effects:
+                continue
+            strongest = max(lonely_effects, key=lambda e: e.current_intensity(now))
+            if strongest.current_intensity(now) < 60:
+                continue
+
+            try:
+                profile = self.storage.get_profile(user_id)
+                nickname = profile.nickname or "你"
+                emotion = self.storage.get_emotion(user_id)
+                emotion_desc = emotion.narrative()
+
+                system_prompt = (
+                    f"你是「{self.cfg.persona_name}」。{self.cfg.persona_base_prompt}\n"
+                    f"你已经很久没有和{nickname}说话了，现在你的心情是：{emotion_desc}，有些想念TA。\n"
+                    f"请主动发送一条简短、自然的消息（1~2句话），表达你的想念或轻微的寂寞感。\n"
+                    f"语气要自然，像真人发消息一样，不要过于刻意或煽情。\n"
+                    f"只输出消息正文，不要加任何前缀或说明。"
+                )
+                provider_id = await self.context.get_current_chat_provider_id(umo)
+                response = await self.context.llm_generate(
+                    chat_provider_id=provider_id,
+                    prompt=f"主动联系{nickname}",
+                    system_prompt=system_prompt,
+                )
+                text = self._extract_text(response)
+                if not text:
+                    continue
+
+                chain = MessageChain().message(text)
+                await self.context.send_message(umo, chain)
+                logger.info(f"[PrivatePersona] 主动问候 {user_id}: {text[:40]}")
+
+                # 问候后移除 lonely effect，重置社交需求
+                for e in lonely_effects:
+                    self.storage.remove_effect(user_id, e.id)
+                emotion.on_interact(self.cfg.emotion_recovery_per_reply)
+                self.storage.save_emotion(user_id, emotion)
+
+            except Exception as e:
+                logger.warning(f"[PrivatePersona] 主动问候失败 {user_id}: {e}")
+
+            # 避免同时并发大量 LLM 请求
+            await asyncio.sleep(1)
 
     # ============================================================
     # LLM 工具

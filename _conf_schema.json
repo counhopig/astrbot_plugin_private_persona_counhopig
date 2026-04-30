@@ -154,5 +154,17 @@
     "type": "bool",
     "default": false,
     "hint": "生产环境建议关闭。"
+  },
+  "proactive_nudge_enabled": {
+    "description": "启用主动问候",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后，当 Bot 对某用户产生"寂寞"心绪时，会主动发送一条问候消息。需要用户至少有过一次私聊，且平台支持主动发消息。"
+  },
+  "proactive_nudge_cron": {
+    "description": "主动问候检测频率",
+    "type": "string",
+    "default": "0 * * * *",
+    "hint": "Crontab 格式。默认每小时检测一次是否需要主动问候。"
   }
 }

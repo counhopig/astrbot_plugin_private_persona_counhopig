@@ -2,6 +2,20 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2.6.0] - 2026-05-01
+
+### Added
+- `storage.py`：新增 `save_umo(user_id, umo)` / `get_umo(user_id)`，将用户的 `unified_msg_origin` 持久化，为主动推送提供基础
+- `main.py`：`on_message_listener` 中在每次私聊时自动保存用户 UMO
+- `main.py`：新增主动问候 cron 任务 `_proactive_nudge_job` / `_proactive_nudge`
+  - 每小时扫描所有有 lonely effect 且强度 ≥ 60% 的用户
+  - 调用 LLM 以角色身份生成一条自然的主动问候消息
+  - 通过 `context.send_message(umo, MessageChain)` 主动推送给用户
+  - 问候后自动移除 lonely effect、恢复情感能量，避免重复推送
+  - 每用户之间 sleep 1s，避免并发 LLM 请求风暴
+- `config.py`：新增 `proactive_nudge_enabled`（默认 true）和 `proactive_nudge_cron`（默认 `0 * * * *`）
+- `_conf_schema.json`：新增"启用主动问候"和"主动问候检测频率"两项配置说明
+
 ## [2.5.0] - 2026-05-01
 
 ### Added

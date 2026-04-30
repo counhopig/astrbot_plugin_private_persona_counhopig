@@ -399,6 +399,19 @@ class PersonaStorage:
     def list_users(self) -> List[str]:
         return [f.stem for f in self.data_dir.iterdir() if f.suffix == ".json"]
 
+    # ---------- Session (UMO) ----------
+
+    def save_umo(self, user_id: str, umo: str):
+        """持久化用户的 unified_msg_origin，供主动推送使用。"""
+        data = self._load(user_id)
+        data["umo"] = umo
+        self._save(user_id, data)
+
+    def get_umo(self, user_id: str) -> str:
+        """获取用户的 unified_msg_origin，未记录时返回空字符串。"""
+        data = self._load(user_id)
+        return data.get("umo", "")
+
     # ---------- Reflection ----------
 
     def get_reflections(self, user_id: str) -> List[ReflectionRecord]:

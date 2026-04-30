@@ -56,6 +56,10 @@ class PluginConfig:
         self.greeting_on_first_chat = c.get("greeting_on_first_chat", True)
         self.goodnight_hint_enabled = c.get("goodnight_hint_enabled", True)
 
+        # proactive nudge
+        self.proactive_nudge_enabled = c.get("proactive_nudge_enabled", True)
+        self.proactive_nudge_cron = c.get("proactive_nudge_cron", "0 * * * *")
+
         # storage
         self.storage_cache_max = int(c.get("storage_cache_max", 200))
 
