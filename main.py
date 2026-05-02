@@ -136,6 +136,19 @@ class PrivatePersonaPlugin(Star):
             except Exception as e:
                 logger.warning(f"[PrivatePersona] 注册主动问候失败: {e}")
 
+        if self.cfg.emotion_enabled and self.cfg.emotion_decay_cron:
+            try:
+                await self.context.cron_manager.add_basic_job(
+                    name="private_persona_emotion_decay",
+                    cron_expression=self.cfg.emotion_decay_cron,
+                    handler=self._periodic_emotion_decay,
+                    description="私聊人格插件：情感自然衰减",
+                    persistent=False,
+                )
+                logger.info(f"[PrivatePersona] 情感衰减已注册: {self.cfg.emotion_decay_cron}")
+            except Exception as e:
+                logger.warning(f"[PrivatePersona] 注册情感衰减失败: {e}")
+
         logger.info("[PrivatePersona] 初始化完成")
 
     @filter.on_plugin_unloaded()
@@ -480,6 +493,14 @@ class PrivatePersonaPlugin(Star):
             self._debug(f"用户 {user_id} 画像构建完成")
         except Exception as e:
             logger.warning(f"[PrivatePersona] 画像构建失败: {e}")
+
+    def _periodic_emotion_decay(self):
+        """周期性情感衰减的 cron handler"""
+        for user_id in self.storage.list_users():
+            try:
+                self.storage.apply_decay(user_id, self.cfg.emotion_decay_per_hour)
+            except Exception as e:
+                logger.warning(f"[PrivatePersona] 情感衰减失败 {user_id}: {e}")
 
     def _periodic_reflection(self):
         """周期性反思的 cron handler（同步包装）"""

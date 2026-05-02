@@ -26,6 +26,7 @@ class PluginConfig:
         self.emotion_decay_per_hour = float(c.get("emotion_decay_per_hour", 2.0))
         self.emotion_recovery_per_reply = float(c.get("emotion_recovery_per_reply", 3.0))
         self.emotion_injection_style = c.get("emotion_injection_style", "narrative")
+        self.emotion_decay_cron = c.get("emotion_decay_cron", "0 * * * *")
 
         # effect
         self.effect_enabled = c.get("effect_enabled", True)

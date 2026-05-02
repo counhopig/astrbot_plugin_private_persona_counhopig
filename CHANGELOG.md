@@ -4,6 +4,13 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，本项目遵循 [语义化版本规范](https://semver.org/spec/v2.0.0.html)。
 
+## [2.8.0] - 2026-05-02
+
+### 新增
+- `main.py`：新增情感衰减 cron 任务 `_periodic_emotion_decay`，按 `emotion_decay_cron`（默认每小时）遍历所有用户执行 `apply_decay`，解决无对话时状态静止的问题
+- `config.py`：新增 `emotion_decay_cron` 配置项（默认 `0 * * * *`）
+- `_conf_schema.json`：新增"情感衰减定时任务"配置说明，可在 AstrBot 后台调整频率或留空禁用
+
 ## [2.7.1] - 2026-05-01
 
 ### 变更

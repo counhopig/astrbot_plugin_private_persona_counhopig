@@ -47,6 +47,12 @@
     "default": "narrative",
     "hint": "narrative = 叙事型（如'有点累，但见到你心情好了点'）；status = 状态型（如'能量: 80/100'）。"
   },
+  "emotion_decay_cron": {
+    "description": "情感衰减定时任务",
+    "type": "string",
+    "default": "0 * * * *",
+    "hint": "Crontab 格式。默认每小时对所有用户执行一次情感自然衰减。留空则禁用后台自动衰减（仅在对话时衰减）。"
+  },
   "effect_enabled": {
     "description": "启用 Effect 系统",
     "type": "bool",
