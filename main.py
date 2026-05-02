@@ -34,7 +34,7 @@ from .commands.handlers import CommandHandlers
     "astrbot_plugin_private_persona_counhopig",
     "Sisyphus",
     "AstrBot 私聊人格插件 —— 人格、情感、Effect、Todo、记忆与日结",
-    "2.7.0",
+    "2.8.1",
 )
 class PrivatePersonaPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
@@ -110,6 +110,9 @@ class PrivatePersonaPlugin(Star):
     # ============================================================
 
     async def initialize(self):
+        # 先清理本插件之前遗留的 cron 任务（防止僵尸任务积累）
+        await self._cleanup_stale_cron_jobs()
+
         if self.cfg.reflection_enabled and self.cfg.reflection_periodic_cron:
             try:
                 await self.context.cron_manager.add_basic_job(
@@ -151,8 +154,28 @@ class PrivatePersonaPlugin(Star):
 
         logger.info("[PrivatePersona] 初始化完成")
 
+    async def _cleanup_stale_cron_jobs(self):
+        """清理本插件之前注册的 cron 任务，防止配置变更后僵尸任务积累。"""
+        plugin_job_names = [
+            "private_persona_periodic_reflection",
+            "private_persona_proactive_nudge",
+            "private_persona_emotion_decay",
+        ]
+        try:
+            existing_jobs = await self.context.cron_manager.list_jobs()
+            for job in existing_jobs:
+                if job.name in plugin_job_names:
+                    await self.context.cron_manager.delete_job(job.job_id)
+                    logger.info(
+                        f"[PrivatePersona] 已清理旧 cron 任务: {job.name} ({job.job_id})"
+                    )
+        except Exception as e:
+            logger.warning(f"[PrivatePersona] 清理旧 cron 任务时出错: {e}")
+
     @filter.on_plugin_unloaded()
     async def on_plugin_unloaded(self, metadata):
+        # 插件卸载时清理 cron 任务，防止 handler 丢失后僵尸任务继续触发
+        await self._cleanup_stale_cron_jobs()
         logger.info("[PrivatePersona] 插件卸载，数据已持久化")
 
     # ============================================================

@@ -4,6 +4,14 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，本项目遵循 [语义化版本规范](https://semver.org/spec/v2.0.0.html)。
 
+## [2.8.1] - 2026-05-03
+
+### 修复
+- `main.py`：修复 cron 僵尸任务累积问题，导致 AstrBot 日志每 30 分钟出现 `RuntimeError: Basic cron job handler not found` 错误的 bug
+  - 新增 `_cleanup_stale_cron_jobs()`，在 `initialize()` 和 `on_plugin_unloaded()` 中自动清理本插件遗留的旧 cron 任务（根据 job name 匹配）
+  - 解决了配置变更（如 cron 表达式修改）后旧 job 残留、handler 丢失导致调度器反复执行失败的罕见 bug
+  - 同时修复了 `main.py` 中 `@register` 装饰器版本号（`2.7.0` → `2.8.1`）与 `metadata.yaml` 不一致的历史问题
+
 ## [2.8.0] - 2026-05-02
 
 ### 新增
