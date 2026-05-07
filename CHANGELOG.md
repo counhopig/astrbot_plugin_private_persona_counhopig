@@ -4,6 +4,14 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，本项目遵循 [语义化版本规范](https://semver.org/spec/v2.0.0.html)。
 
+## [2.8.3] - 2026-05-07
+
+### 修复
+- `main.py`：修复 `_extract_text()` 无法从 AstrBot `LLMResponse` 中提取文本的 bug
+  - 新增对 `completion_text` 属性的检查，优先于旧版 `completion` / `choices` 路径
+  - 此前 `LLMResponse` 不具备 `completion` 或 `choices` 属性，导致 fallback 到 `str(response)`，将整个 dataclass（含 `reasoning_content`）输出给用户
+  - 同时修复了 `_proactive_nudge`、`on_llm_response`、`_run_reflection`、`_run_profile_building` 四处因同原因导致的文本提取失败
+
 ## [2.8.2] - 2026-05-07
 
 ### 修复

@@ -34,7 +34,7 @@ from .commands.handlers import CommandHandlers
     "astrbot_plugin_private_persona_counhopig",
     "Sisyphus",
     "AstrBot 私聊人格插件 —— 人格、情感、Effect、Todo、记忆与日结",
-    "2.8.2",
+    "2.8.3",
 )
 class PrivatePersonaPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
@@ -261,7 +261,10 @@ class PrivatePersonaPlugin(Star):
         """从 LLMResponse / Completion / Message / TextBlock 中提取纯文本"""
         if isinstance(response, str):
             return response
-        # AstrBot LLMResponse wrapper
+        # AstrBot LLMResponse (entities.py) — 优先匹配
+        if hasattr(response, "completion_text"):
+            return str(response.completion_text) or ""
+        # AstrBot LLMResponse wrapper (旧版 compat)
         if hasattr(response, "completion"):
             completion = response.completion
             if isinstance(completion, str):
