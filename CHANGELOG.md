@@ -4,6 +4,14 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，本项目遵循 [语义化版本规范](https://semver.org/spec/v2.0.0.html)。
 
+## [2.8.2] - 2026-05-07
+
+### 修复
+- `storage.py`：修复缓存键不一致导致情感状态显示冻结的 bug
+  - `_load` / `_save` 中的缓存字典 key 改为统一使用规范化的 user_id（去除 `@`、`.` 等特殊字符），与 `_file_path` 的文件命名规则一致
+  - 此前 cron 任务 `_periodic_emotion_decay` 传入的 user_id（文件 stem）与事件处理器传入的完整 WeChat ID 被视为不同缓存 key，cron 更新文件后 `/persona` 命令仍命中旧缓存，导致活力/心情/社交需求显示值长时间不变
+- `tests/test_prompt_builder.py`：修复 `test_disabled_modules_not_injected` 遗漏禁用 `greeting_on_first_chat` 导致的断言失败
+
 ## [2.8.1] - 2026-05-03
 
 ### 修复

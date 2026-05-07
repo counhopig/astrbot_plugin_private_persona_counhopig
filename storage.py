@@ -44,16 +44,22 @@ class PersonaStorage:
         safe_id = "".join(c for c in user_id if c.isalnum() or c in "-_")
         return self.data_dir / f"{safe_id}.json"
 
+    @staticmethod
+    def _norm_id(user_id: str) -> str:
+        """将 user_id 规范化为缓存键，与 _file_path 中的文件命名规则一致。"""
+        return "".join(c for c in user_id if c.isalnum() or c in "-_")
+
     def _load(self, user_id: str) -> dict:
-        if user_id in self._cache:
-            self._cache.move_to_end(user_id)
-            return self._cache[user_id]
+        canon = self._norm_id(user_id)
+        if canon in self._cache:
+            self._cache.move_to_end(canon)
+            return self._cache[canon]
         path = self._file_path(user_id)
         if path.exists():
             try:
                 with open(path, "r", encoding="utf-8") as f:
                     data = json.load(f)
-                self._cache[user_id] = data
+                self._cache[canon] = data
                 if len(self._cache) > self._cache_max:
                     self._cache.popitem(last=False)
                 return data
@@ -62,12 +68,13 @@ class PersonaStorage:
         return {}
 
     def _save(self, user_id: str, data: dict):
+        canon = self._norm_id(user_id)
         path = self._file_path(user_id)
         try:
             with open(path, "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
-            self._cache[user_id] = data
-            self._cache.move_to_end(user_id)
+            self._cache[canon] = data
+            self._cache.move_to_end(canon)
             if len(self._cache) > self._cache_max:
                 self._cache.popitem(last=False)
         except Exception as e:

@@ -117,6 +117,7 @@ class TestPromptBuilder:
         builder.cfg.consolidation_enabled = False
         builder.cfg.time_awareness_enabled = False
         builder.cfg.goodnight_hint_enabled = False
+        builder.cfg.greeting_on_first_chat = False
         injections = builder.build_all("u1")
         # Only persona + style should remain
         assert len(injections) == 2
