@@ -20,7 +20,7 @@ except Exception:  # pragma: no cover
 
 from .config import PluginConfig
 from .storage import PersonaStorage
-from .models import InteractionMode
+from .models import InteractionMode, InteractionOutcome
 from .engine.prompt_builder import PromptBuilder
 from .engine.interaction import judge_outcome
 from .engine.effect_engine import EffectEngine
@@ -34,7 +34,7 @@ from .commands.handlers import CommandHandlers
     "astrbot_plugin_private_persona_counhopig",
     "Sisyphus",
     "AstrBot 私聊人格插件 —— 人格、情感、Effect、Todo、记忆与日结",
-    "2.8.3",
+    "2.8.4",
 )
 class PrivatePersonaPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
@@ -542,10 +542,17 @@ class PrivatePersonaPlugin(Star):
         asyncio.create_task(self._proactive_nudge())
 
     async def _proactive_nudge(self):
-        """遍历所有用户，当 lonely 心绪强度足够高时主动发送问候消息。"""
+        """遍历所有用户，当 lonely 时间足够长时主动发送问候消息。
+
+        不依赖已被创建的 lonely effect（effect 只在用户发消息时被动创建），
+        而是直接根据上次交互时间计算孤独程度。
+        """
         import asyncio
         import time
         from astrbot.core.message.message_event_result import MessageChain
+
+        LONELY_THRESHOLD_HOURS = 6  # 与 effect_engine 保持一致
+        NUDGE_INTENSITY_THRESHOLD = 60  # 强度 >= 60 才发送问候
 
         now = time.time()
         for user_id in self.storage.list_users():
@@ -553,13 +560,13 @@ class PrivatePersonaPlugin(Star):
             if not umo:
                 continue
 
-            # 检查是否有活跃的 lonely effect 且强度 >= 60%
-            effects = self.storage.get_active_effects(user_id)
-            lonely_effects = [e for e in effects if e.effect_type == "lonely"]
-            if not lonely_effects:
+            # 直接根据持久化的 interactions 记录计算孤独时长
+            hours_since = self.storage.get_hours_since_last_interaction(user_id)
+            if hours_since < LONELY_THRESHOLD_HOURS:
                 continue
-            strongest = max(lonely_effects, key=lambda e: e.current_intensity(now))
-            if strongest.current_intensity(now) < 60:
+
+            computed_intensity = min(80.0, hours_since * 5)
+            if computed_intensity < NUDGE_INTENSITY_THRESHOLD:
                 continue
 
             try:
@@ -587,11 +594,20 @@ class PrivatePersonaPlugin(Star):
 
                 chain = MessageChain().message(text)
                 await self.context.send_message(umo, chain)
-                logger.info(f"[PrivatePersona] 主动问候 {user_id}: {text[:40]}")
+                logger.info(
+                    f"[PrivatePersona] 主动问候 {user_id} ({hours_since:.1f}h): {text[:40]}"
+                )
 
-                # 问候后移除 lonely effect，重置社交需求
-                for e in lonely_effects:
-                    self.storage.remove_effect(user_id, e.id)
+                # 记录一次模拟交互，防止下次 cron 立即再次问候
+                self.storage.record_interaction(
+                    user_id, InteractionMode.ACTIVE, InteractionOutcome.CONNECTED
+                )
+                # 清理已有的 lonely effect（如果存在）
+                effects = self.storage.get_active_effects(user_id)
+                for e in effects:
+                    if e.effect_type == "lonely":
+                        self.storage.remove_effect(user_id, e.id)
+                # 问候后更新情感状态
                 emotion.on_interact(self.cfg.emotion_recovery_per_reply)
                 self.storage.save_emotion(user_id, emotion)
 

@@ -365,6 +365,24 @@ class PersonaStorage:
                 result.append(InteractionEvent.from_dict(i))
         return result
 
+    def get_hours_since_last_interaction(self, user_id: str) -> float:
+        """返回距离最近一次交互的小时数。
+        基于持久化的 interactions 记录（而非内存缓存 _prev_interaction_times），
+        确保 cron job 中也能正确读取。
+        """
+        now = time.time()
+        data = self._load(user_id)
+        interactions = data.get("interactions", [])
+        if interactions:
+            last_ts = interactions[-1].get("timestamp", 0.0)
+            if last_ts > 0:
+                return (now - last_ts) / 3600.0
+        # 回退：使用 profile.last_seen
+        profile = self.get_profile(user_id)
+        if profile.last_seen > 0:
+            return (now - profile.last_seen) / 3600.0
+        return 0.0
+
     def clear_interactions(self, user_id: str):
         data = self._load(user_id)
         data["interactions"] = []

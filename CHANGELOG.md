@@ -4,6 +4,15 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，本项目遵循 [语义化版本规范](https://semver.org/spec/v2.0.0.html)。
 
+## [2.8.4] - 2026-05-09
+
+### 修复
+- `main.py`：主动问候 cron 无法触发——不再依赖被动创建的 lonely effect
+  - `_proactive_nudge()` 之前通过 `get_active_effects()` 扫描已有的 lonely effect，但 lonely effect 只在用户发消息时由 `effect_engine` 被动创建，导致 cron 永远抓不到沉默用户
+  - 修复为通过 `storage.py` 新增的 `get_hours_since_last_interaction()` 直接根据持久化的 interactions 记录计算孤独时长，与 `effect_engine` 保持相同 6h 阈值、60% 强度阈值（≥12h）
+  - 问候后追加 `record_interaction()` 防止同一 cron 周期重复问候
+- `storage.py`：新增 `get_hours_since_last_interaction()` 方法，基于持久化 interactions 记录返回距上次交互的小时数，`profile.last_seen` 作为回退
+
 ## [2.8.3] - 2026-05-07
 
 ### 修复
