@@ -4,6 +4,16 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，本项目遵循 [语义化版本规范](https://semver.org/spec/v2.0.0.html)。
 
+## [2.8.5] - 2026-05-11
+
+### 修复
+- `main.py`：重构 cron 清理策略，避免 plugin reload 时波及 AstrBot 全局 cron scheduler
+  - `__init__` 新增 `_cron_job_ids` 列表追踪本插件注册的全部 cron job ID
+  - `initialize()` 中去掉注册前调用 `_cleanup_stale_cron_jobs()`（遍历 `list_jobs()` 按 name 匹配删除），改为每个 `add_basic_job()` 后记录 `job.job_id`
+  - 新增 `terminate()` 方法（AstrBot 框架级生命周期入口），在插件卸载/重载时调用 `_cleanup_my_cron_jobs()`
+  - `_cleanup_stale_cron_jobs()` → `_cleanup_my_cron_jobs()`：不再调用 `list_jobs()` 遍历全局 job，改为按 tracked `job_id` 精确删除，不触动 AstrBot 全局 cron scheduler 状态
+  - `on_plugin_unloaded()` 作为 double-safe 兜底
+
 ## [2.8.4] - 2026-05-09
 
 ### 修复

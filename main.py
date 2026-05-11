@@ -56,6 +56,9 @@ class PrivatePersonaPlugin(Star):
         self.profile_builder = ProfileBuilder(self.storage, self.cfg)
         self.cmd = CommandHandlers(self.cfg, self.storage)
 
+        # 追踪本插件注册的 cron job ID，用于 terminate 时精确清理
+        self._cron_job_ids: list[str] = []
+
         logger.info(f"[PrivatePersona] 插件已加载，人格: {self.cfg.persona_name}")
 
     def _resolve_data_dir(self) -> Path:
@@ -110,72 +113,70 @@ class PrivatePersonaPlugin(Star):
     # ============================================================
 
     async def initialize(self):
-        # 先清理本插件之前遗留的 cron 任务（防止僵尸任务积累）
-        await self._cleanup_stale_cron_jobs()
-
         if self.cfg.reflection_enabled and self.cfg.reflection_periodic_cron:
             try:
-                await self.context.cron_manager.add_basic_job(
+                job = await self.context.cron_manager.add_basic_job(
                     name="private_persona_periodic_reflection",
                     cron_expression=self.cfg.reflection_periodic_cron,
                     handler=self._periodic_reflection,
                     description="私聊人格插件：周期性自动反思",
                     persistent=False,
                 )
+                self._cron_job_ids.append(job.job_id)
                 logger.info(f"[PrivatePersona] 周期性反思已注册: {self.cfg.reflection_periodic_cron}")
             except Exception as e:
                 logger.warning(f"[PrivatePersona] 注册周期性反思失败: {e}")
 
         if self.cfg.proactive_nudge_enabled and self.cfg.proactive_nudge_cron:
             try:
-                await self.context.cron_manager.add_basic_job(
+                job = await self.context.cron_manager.add_basic_job(
                     name="private_persona_proactive_nudge",
                     cron_expression=self.cfg.proactive_nudge_cron,
                     handler=self._proactive_nudge_job,
                     description="私聊人格插件：寂寞时主动问候",
                     persistent=False,
                 )
+                self._cron_job_ids.append(job.job_id)
                 logger.info(f"[PrivatePersona] 主动问候已注册: {self.cfg.proactive_nudge_cron}")
             except Exception as e:
                 logger.warning(f"[PrivatePersona] 注册主动问候失败: {e}")
 
         if self.cfg.emotion_enabled and self.cfg.emotion_decay_cron:
             try:
-                await self.context.cron_manager.add_basic_job(
+                job = await self.context.cron_manager.add_basic_job(
                     name="private_persona_emotion_decay",
                     cron_expression=self.cfg.emotion_decay_cron,
                     handler=self._periodic_emotion_decay,
                     description="私聊人格插件：情感自然衰减",
                     persistent=False,
                 )
+                self._cron_job_ids.append(job.job_id)
                 logger.info(f"[PrivatePersona] 情感衰减已注册: {self.cfg.emotion_decay_cron}")
             except Exception as e:
                 logger.warning(f"[PrivatePersona] 注册情感衰减失败: {e}")
 
         logger.info("[PrivatePersona] 初始化完成")
 
-    async def _cleanup_stale_cron_jobs(self):
-        """清理本插件之前注册的 cron 任务，防止配置变更后僵尸任务积累。"""
-        plugin_job_names = [
-            "private_persona_periodic_reflection",
-            "private_persona_proactive_nudge",
-            "private_persona_emotion_decay",
-        ]
-        try:
-            existing_jobs = await self.context.cron_manager.list_jobs()
-            for job in existing_jobs:
-                if job.name in plugin_job_names:
-                    await self.context.cron_manager.delete_job(job.job_id)
-                    logger.info(
-                        f"[PrivatePersona] 已清理旧 cron 任务: {job.name} ({job.job_id})"
-                    )
-        except Exception as e:
-            logger.warning(f"[PrivatePersona] 清理旧 cron 任务时出错: {e}")
+    async def terminate(self):
+        """插件卸载/重载时清理本插件注册的 cron 任务，不波及 AstrBot 其他 cron。"""
+        await self._cleanup_my_cron_jobs()
+        logger.info("[PrivatePersona] 插件终止，已清理 cron 任务")
+
+    async def _cleanup_my_cron_jobs(self):
+        """删除本插件之前注册的 cron 任务（基于 tracked job_id）。"""
+        cron_mgr = self.context.cron_manager
+        for job_id in self._cron_job_ids:
+            try:
+                await cron_mgr.delete_job(job_id)
+                logger.info(f"[PrivatePersona] 已清理 cron 任务: {job_id}")
+            except Exception as e:
+                logger.warning(f"[PrivatePersona] 清理 cron 任务失败 {job_id}: {e}")
+        self._cron_job_ids.clear()
 
     @filter.on_plugin_unloaded()
     async def on_plugin_unloaded(self, metadata):
-        # 插件卸载时清理 cron 任务，防止 handler 丢失后僵尸任务继续触发
-        await self._cleanup_stale_cron_jobs()
+        """插件卸载时的兜底清理（AstrBot reload 流程中 terminate() 会先执行，此处为 double-safe）。"""
+        await self._cleanup_my_cron_jobs()
         logger.info("[PrivatePersona] 插件卸载，数据已持久化")
 
     # ============================================================
