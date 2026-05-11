@@ -1,6 +1,6 @@
 name: "astrbot_plugin_private_persona_counhopig"
 author: "Counhopig"
-version: "2.8.5"
+version: "2.9.0"
 desc: "AstrBot 私聊人格插件 —— 为私聊场景注入可配置的人格、情感状态与上下文记忆"
 display_name: "私聊人格"
 repo: "https://github.com/counhopig/astrbot_plugin_private_persona_counhopig"

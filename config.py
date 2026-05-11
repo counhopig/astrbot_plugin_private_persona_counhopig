@@ -61,6 +61,11 @@ class PluginConfig:
         self.proactive_nudge_enabled = c.get("proactive_nudge_enabled", True)
         self.proactive_nudge_cron = c.get("proactive_nudge_cron", "0 * * * *")
 
+        # rest (休息/睡眠)
+        self.rest_enabled = c.get("rest_enabled", True)
+        self.rest_sleep_hour = int(c.get("rest_sleep_hour", 23))
+        self.rest_wake_hour = int(c.get("rest_wake_hour", 7))
+
         # storage
         self.storage_cache_max = int(c.get("storage_cache_max", 200))
 

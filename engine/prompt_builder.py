@@ -28,6 +28,9 @@ class PromptBuilder:
         if self.cfg.time_awareness_enabled:
             injections.append(self._time())
 
+        if self.cfg.rest_enabled:
+            injections.append(self._rest())
+
         if self.cfg.consolidation_enabled:
             block = self._consolidation(user_id)
             if block:
@@ -200,4 +203,32 @@ class PromptBuilder:
         hour = datetime.now().hour
         if hour >= 23 or hour < 1:
             return "[夜间提示]\n已经很晚了，如果用户说要睡，温柔地祝TA晚安。"
+        return ""
+
+    def _rest(self) -> str:
+        hour = datetime.now().hour
+        sleep_h, wake_h = self.cfg.rest_sleep_hour, self.cfg.rest_wake_hour
+
+        if sleep_h <= hour or hour < wake_h:
+            if hour < wake_h:
+                return (
+                    "[休息状态]\n你已经睡了。现在是深夜，你被消息吵醒了。"
+                    "\n你现在很困，只想快点回完继续睡。回复要简短含糊，像被人半夜叫醒一样。"
+                    "\n不要假装精神很好，你就是困。可以揉揉眼睛、打个哈欠。"
+                )
+            else:
+                return (
+                    "[休息状态]\n现在已经到了你睡觉的时间，你很困了。"
+                    "\n回复要简短，语气困倦。如果对方没急事，可以暗示自己想睡了。"
+                )
+        elif wake_h <= hour < wake_h + 1:
+            return (
+                "[休息状态]\n你刚睡醒，还有点迷糊。正在慢慢清醒中。"
+                "\n回复可以带一点晨间的慵懒感，稍微慢半拍的感觉。"
+            )
+        elif (sleep_h - 1) <= hour < sleep_h:
+            return (
+                "[休息状态]\n快到睡觉时间了，你已经有点犯困了。"
+                "\n反应稍微迟钝一点，偶尔打个哈欠。如果对方没什么要紧事，可以提一句该休息了。"
+            )
         return ""

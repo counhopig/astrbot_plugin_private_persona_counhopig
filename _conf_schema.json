@@ -155,6 +155,24 @@
     "default": true,
     "hint": "深夜时段（23:00~06:00）在 Prompt 中注入'该睡了'的温柔提示。"
   },
+  "rest_enabled": {
+    "description": "启用休息系统",
+    "type": "bool",
+    "default": true,
+    "hint": "开启后 Bot 会模拟人类作息：晚上犯困→睡觉→早上刚醒迷糊→白天清醒，Prompt 语气随休息状态变化。"
+  },
+  "rest_sleep_hour": {
+    "description": "睡觉时间（小时）",
+    "type": "int",
+    "default": 23,
+    "hint": "Bot 开始睡觉的时间（24小时制）。默认 23 点。入睡前 1 小时会表现为「犯困」。"
+  },
+  "rest_wake_hour": {
+    "description": "起床时间（小时）",
+    "type": "int",
+    "default": 7,
+    "hint": "Bot 起床的时间（24小时制）。默认 7 点。起床后 1 小时内表现为「刚醒迷糊」。"
+  },
   "debug_log_enabled": {
     "description": "输出调试日志",
     "type": "bool",

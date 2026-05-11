@@ -34,7 +34,7 @@ from .commands.handlers import CommandHandlers
     "astrbot_plugin_private_persona_counhopig",
     "Sisyphus",
     "AstrBot 私聊人格插件 —— 人格、情感、Effect、Todo、记忆与日结",
-    "2.8.4",
+    "2.9.0",
 )
 class PrivatePersonaPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
@@ -542,6 +542,13 @@ class PrivatePersonaPlugin(Star):
         import asyncio
         asyncio.create_task(self._proactive_nudge())
 
+    def _is_sleeping(self) -> bool:
+        """是否在设定的睡眠时段内。"""
+        from datetime import datetime
+        hour = datetime.now().hour
+        sleep_h, wake_h = self.cfg.rest_sleep_hour, self.cfg.rest_wake_hour
+        return sleep_h <= hour or hour < wake_h
+
     async def _proactive_nudge(self):
         """遍历所有用户，当 lonely 时间足够长时主动发送问候消息。
 
@@ -551,6 +558,9 @@ class PrivatePersonaPlugin(Star):
         import asyncio
         import time
         from astrbot.core.message.message_event_result import MessageChain
+
+        if self.cfg.rest_enabled and self._is_sleeping():
+            return
 
         LONELY_THRESHOLD_HOURS = 6  # 与 effect_engine 保持一致
         NUDGE_INTENSITY_THRESHOLD = 60  # 强度 >= 60 才发送问候
