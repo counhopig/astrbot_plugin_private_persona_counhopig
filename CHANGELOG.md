@@ -4,6 +4,20 @@
 
 格式基于 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/)，本项目遵循 [语义化版本规范](https://semver.org/spec/v2.0.0.html)。
 
+## [2.9.1] - 2026-05-11
+
+### 修复
+- 休息系统跨午夜逻辑 bug：当 `sleep_hour < wake_hour`（如 1:00~6:00，不跨午夜）时，`_is_sleeping()` 全天误判为睡眠状态
+  - 修复方案：`PluginConfig` 新增 `is_sleeping(hour)` 方法，正确处理跨午夜和不跨午夜两种场景
+  - `prompt_builder._rest()` 和内联 `_proactive_nudge` 的睡眠检查统一调用此方法，消除重复实现
+- `chat_count` 首条消息被重复递增：`on_first_chat_greeting` 和 `on_llm_request` 各调用一次 `touch_profile`
+
+### 优化
+- `_extract_text()` 从 29 行简化到 3 行：删除 4 条框架已覆盖的死代码分支，直接用 `LLMResponse.completion_text`
+- `storage.py`：删除 `_prev_interaction_times` 内存字典及 `get_prev_interaction_time()` 方法，lonely 检测统一使用持久化的 `get_hours_since_last_interaction()`
+- `on_message_listener`：调换 `auto_trigger` 与 `record_interaction` 调用顺序，消除对 `_prev_interaction_times` 的依赖
+- 删除未使用的 `Dict` import、`time` import、`uuid` import 等
+
 ## [2.9.0] - 2026-05-11
 
 ### 新增

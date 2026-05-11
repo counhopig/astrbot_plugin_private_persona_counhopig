@@ -3,7 +3,6 @@ Tests for engine/effect_engine.py — automatic effect triggering
 """
 
 import time
-from pathlib import Path
 
 import pytest
 
@@ -33,19 +32,22 @@ class TestEffectAutoTrigger:
 
     def test_long_gap_creates_lonely(self, engine):
         eff_engine, storage = engine
-        # 先记录一次历史互动，使 _prev_interaction_times 有值
+        # 记录一次历史互动，然后将时间戳改为 7 小时前以模拟长时间未互动
         storage.record_interaction("u1", InteractionMode.PASSIVE, InteractionOutcome.CONNECTED)
-        # 手动将上一次交互时间设置为 7 小时前，模拟长时间未互动
-        storage._prev_interaction_times["u1"] = time.time() - 7 * 3600
+        data = storage._load("u1")
+        data["interactions"][-1]["timestamp"] = time.time() - 7 * 3600
+        storage._save("u1", data)
         eff_engine.auto_trigger("u1", "hi", InteractionOutcome.CONNECTED)
         effects = storage.get_active_effects("u1")
         assert any(e.effect_type == "lonely" for e in effects)
 
     def test_no_lonely_if_recent(self, engine):
         eff_engine, storage = engine
-        # 先记录一次历史互动，将上次交互时间设为 1 小时前（未超过 6 小时阈值）
+        # 记录一次历史互动，然后将时间戳改为 1 小时前（未超过 6 小时阈值）
         storage.record_interaction("u1", InteractionMode.PASSIVE, InteractionOutcome.CONNECTED)
-        storage._prev_interaction_times["u1"] = time.time() - 1 * 3600
+        data = storage._load("u1")
+        data["interactions"][-1]["timestamp"] = time.time() - 1 * 3600
+        storage._save("u1", data)
         eff_engine.auto_trigger("u1", "hi", InteractionOutcome.CONNECTED)
         effects = storage.get_active_effects("u1")
         assert not any(e.effect_type == "lonely" for e in effects)

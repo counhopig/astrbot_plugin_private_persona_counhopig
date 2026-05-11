@@ -2,14 +2,12 @@
 Tests for engine/prompt_builder.py — prompt injection building
 """
 
-from pathlib import Path
 
 import pytest
 
 from astrbot_plugin_private_persona_counhopig.config import PluginConfig
 from astrbot_plugin_private_persona_counhopig.storage import PersonaStorage
 from astrbot_plugin_private_persona_counhopig.engine.prompt_builder import PromptBuilder
-from astrbot_plugin_private_persona_counhopig.models import EmotionState
 
 
 @pytest.fixture

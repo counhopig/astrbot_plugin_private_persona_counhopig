@@ -2,7 +2,6 @@
 Effect 引擎：自动根据互动结果和状态触发 Effect
 """
 
-import time
 from datetime import datetime
 
 from astrbot.api import logger
@@ -21,7 +20,6 @@ class EffectEngine:
         return any(e.effect_type == effect_type for e in active)
 
     def auto_trigger(self, user_id: str, msg_text: str, outcome: InteractionOutcome):
-        now = time.time()
         emotion = self.storage.get_emotion(user_id)
 
         # 1. 被冷落 / hostile → wronged
@@ -51,13 +49,7 @@ class EffectEngine:
             logger.debug(f"[EffectEngine] triggered awkward for {user_id}")
 
         # 3. 长时间未互动 → lonely
-        # 使用上一次交互时间（record_interaction 调用前保存的值），
-        # 避免把刚记录的当前消息算作"最近一次"导致 hours_since ≈ 0
-        prev_ts = self.storage.get_prev_interaction_time(user_id)
-        if prev_ts > 0:
-            hours_since = (now - prev_ts) / 3600
-        else:
-            hours_since = 0.0  # 首次交互，不触发 lonely
+        hours_since = self.storage.get_hours_since_last_interaction(user_id)
 
         if hours_since > 6 and not self._has_active_effect(user_id, "lonely"):
             self.storage.add_effect(

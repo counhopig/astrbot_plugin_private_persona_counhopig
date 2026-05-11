@@ -2,6 +2,8 @@
 配置层：从 AstrBot 配置字典解析本插件的配置项
 """
 
+from datetime import datetime
+
 
 class PluginConfig:
     """插件配置对象，把 dict 转成属性访问"""
@@ -71,3 +73,17 @@ class PluginConfig:
 
         # debug
         self.debug_log_enabled = c.get("debug_log_enabled", False)
+
+    def is_sleeping(self, hour: int | None = None) -> bool:
+        """判断当前（或指定小时）是否在睡眠时段内。
+        正确处理跨午夜（如 23:00~7:00）和不跨午夜（如 1:00~6:00）两种场景。
+        """
+        if hour is None:
+            hour = datetime.now().hour
+        sleep_h, wake_h = self.rest_sleep_hour, self.rest_wake_hour
+        if sleep_h <= wake_h:
+            # 不跨午夜：sleep_h ~ wake_h（例如 1:00~6:00）
+            return sleep_h <= hour < wake_h
+        else:
+            # 跨午夜：sleep_h ~ 24:00 和 0:00 ~ wake_h（例如 23:00~7:00）
+            return sleep_h <= hour or hour < wake_h

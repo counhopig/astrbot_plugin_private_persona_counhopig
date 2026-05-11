@@ -4,7 +4,6 @@ Tests for models.py — data models and enums
 
 import time
 
-import pytest
 
 from astrbot_plugin_private_persona_counhopig.models import (
     EmotionState,

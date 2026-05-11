@@ -9,7 +9,7 @@ import uuid
 from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 from astrbot.api import logger
 
@@ -37,8 +37,6 @@ class PersonaStorage:
         self.data_dir.mkdir(parents=True, exist_ok=True)
         self._cache_max = cache_max
         self._cache: OrderedDict[str, dict] = OrderedDict()
-        # 记录每个用户上一次（当前消息之前）的交互时间，供 lonely 检测使用
-        self._prev_interaction_times: Dict[str, float] = {}
 
     def _file_path(self, user_id: str) -> Path:
         safe_id = "".join(c for c in user_id if c.isalnum() or c in "-_")
@@ -335,13 +333,8 @@ class PersonaStorage:
     # ---------- Interaction ----------
 
     def record_interaction(self, user_id: str, mode: InteractionMode, outcome: InteractionOutcome):
-        # 先保存上一条交互的时间戳，供 lonely 检测使用
         data = self._load(user_id)
         existing = data.get("interactions", [])
-        if existing:
-            self._prev_interaction_times[user_id] = existing[-1].get("timestamp", 0.0)
-        else:
-            self._prev_interaction_times.setdefault(user_id, 0.0)
 
         event = InteractionEvent(mode=mode.value, outcome=outcome.value)
         existing.append(event.to_dict())
@@ -349,10 +342,6 @@ class PersonaStorage:
             existing = existing[-200:]
         data["interactions"] = existing
         self._save(user_id, data)
-
-    def get_prev_interaction_time(self, user_id: str) -> float:
-        """返回当前消息记录之前的上一次交互时间戳（0.0 表示从未交互）"""
-        return self._prev_interaction_times.get(user_id, 0.0)
 
     def get_today_interactions(self, user_id: str) -> List[InteractionEvent]:
         today = datetime.now().strftime("%Y-%m-%d")
@@ -459,7 +448,6 @@ class PersonaStorage:
         if path.exists():
             path.unlink()
         self._cache.pop(user_id, None)
-        self._prev_interaction_times.pop(user_id, None)
 
     def list_users(self) -> List[str]:
         return [f.stem for f in self.data_dir.iterdir() if f.suffix == ".json"]

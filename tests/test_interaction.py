@@ -2,7 +2,6 @@
 Tests for engine/interaction.py — outcome judgment
 """
 
-import pytest
 
 from astrbot_plugin_private_persona_counhopig.engine.interaction import judge_outcome
 from astrbot_plugin_private_persona_counhopig.models import InteractionOutcome

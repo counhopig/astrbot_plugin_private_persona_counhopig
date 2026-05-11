@@ -34,7 +34,7 @@ from .commands.handlers import CommandHandlers
     "astrbot_plugin_private_persona_counhopig",
     "Sisyphus",
     "AstrBot 私聊人格插件 —— 人格、情感、Effect、Todo、记忆与日结",
-    "2.9.0",
+    "2.9.1",
 )
 class PrivatePersonaPlugin(Star):
     def __init__(self, context: Context, config: dict | None = None):
@@ -236,13 +236,16 @@ class PrivatePersonaPlugin(Star):
             self.storage.save_umo(user_id, event.unified_msg_origin)
 
             outcome = judge_outcome(msg_text)
-            self.storage.record_interaction(user_id, InteractionMode.PASSIVE, outcome)
-            self._debug(f"记录互动: passive / {outcome.value}")
 
+            # auto_trigger 必须在 record_interaction 之前调用，
+            # 这样 get_hours_since_last_interaction 读取的是上次交互时间而非本次
             if self.cfg.effect_enabled and self.cfg.effect_auto_trigger:
                 self.effect_engine.auto_trigger(user_id, msg_text, outcome)
             if self.cfg.todo_enabled and self.cfg.todo_auto_trigger:
                 self.todo_engine.auto_trigger(user_id, msg_text, outcome)
+
+            self.storage.record_interaction(user_id, InteractionMode.PASSIVE, outcome)
+            self._debug(f"记录互动: passive / {outcome.value}")
 
             # 轮数计数，触发反思和画像构建（持久化到用户 JSON，重启后不丢失）
             if self.cfg.reflection_enabled:
@@ -259,34 +262,8 @@ class PrivatePersonaPlugin(Star):
 
     @staticmethod
     def _extract_text(response) -> str:
-        """从 LLMResponse / Completion / Message / TextBlock 中提取纯文本"""
-        if isinstance(response, str):
-            return response
-        # AstrBot LLMResponse (entities.py) — 优先匹配
-        if hasattr(response, "completion_text"):
-            return str(response.completion_text) or ""
-        # AstrBot LLMResponse wrapper (旧版 compat)
-        if hasattr(response, "completion"):
-            completion = response.completion
-            if isinstance(completion, str):
-                return completion
-            # Anthropic Message style
-            if hasattr(completion, "content"):
-                parts = []
-                for block in completion.content:
-                    if hasattr(block, "text"):
-                        parts.append(block.text)
-                    elif isinstance(block, str):
-                        parts.append(block)
-                return " ".join(parts)
-            return str(completion)
-        # OpenAI style
-        if hasattr(response, "choices") and response.choices:
-            choice = response.choices[0]
-            if hasattr(choice, "message") and hasattr(choice.message, "content"):
-                return str(choice.message.content) or ""
-        # Fallback
-        return str(response)
+        """从 LLMResponse 中提取纯文本。使用框架统一的 completion_text 属性。"""
+        return getattr(response, "completion_text", "") or ""
 
     @filter.on_llm_response()
     async def on_llm_response(self, event: AstrMessageEvent, response):
@@ -465,9 +442,7 @@ class PrivatePersonaPlugin(Star):
         profile = self.storage.get_profile(event.get_sender_id())
         if profile.chat_count > 0:
             return
-        # 立即标记已问候（递增 chat_count），防止 greeting 短路 LLM 管道后
-        # on_llm_request 的 touch_profile 永不执行，导致重复发送问候消息。
-        self.storage.touch_profile(event.get_sender_id(), event.get_sender_name() or "")
+        # chat_count 由 on_llm_request 的 touch_profile 统一管理，这里不触碰
         name = self.cfg.persona_name
         yield event.plain_result(
             f"嗨～我是 {name} ✨\n"
@@ -542,13 +517,6 @@ class PrivatePersonaPlugin(Star):
         import asyncio
         asyncio.create_task(self._proactive_nudge())
 
-    def _is_sleeping(self) -> bool:
-        """是否在设定的睡眠时段内。"""
-        from datetime import datetime
-        hour = datetime.now().hour
-        sleep_h, wake_h = self.cfg.rest_sleep_hour, self.cfg.rest_wake_hour
-        return sleep_h <= hour or hour < wake_h
-
     async def _proactive_nudge(self):
         """遍历所有用户，当 lonely 时间足够长时主动发送问候消息。
 
@@ -559,7 +527,7 @@ class PrivatePersonaPlugin(Star):
         import time
         from astrbot.core.message.message_event_result import MessageChain
 
-        if self.cfg.rest_enabled and self._is_sleeping():
+        if self.cfg.rest_enabled and self.cfg.is_sleeping():
             return
 
         LONELY_THRESHOLD_HOURS = 6  # 与 effect_engine 保持一致

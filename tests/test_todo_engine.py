@@ -2,8 +2,6 @@
 Tests for engine/todo_engine.py — automatic todo triggering
 """
 
-import time
-from pathlib import Path
 
 import pytest
 
@@ -11,7 +9,6 @@ from astrbot_plugin_private_persona_counhopig.storage import PersonaStorage
 from astrbot_plugin_private_persona_counhopig.models import (
     EmotionState,
     InteractionOutcome,
-    TodoType,
 )
 from astrbot_plugin_private_persona_counhopig.engine.todo_engine import TodoEngine
 

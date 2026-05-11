@@ -2,16 +2,13 @@
 Tests for storage.py — JSON file storage engine
 """
 
-import json
 import time
-from pathlib import Path
 
 import pytest
 
 from astrbot_plugin_private_persona_counhopig.storage import PersonaStorage
 from astrbot_plugin_private_persona_counhopig.models import (
     EmotionState,
-    UserProfile,
     TodoType,
     InteractionMode,
     InteractionOutcome,

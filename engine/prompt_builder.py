@@ -209,7 +209,7 @@ class PromptBuilder:
         hour = datetime.now().hour
         sleep_h, wake_h = self.cfg.rest_sleep_hour, self.cfg.rest_wake_hour
 
-        if sleep_h <= hour or hour < wake_h:
+        if self.cfg.is_sleeping(hour):
             if hour < wake_h:
                 return (
                     "[休息状态]\n你已经睡了。现在是深夜，你被消息吵醒了。"

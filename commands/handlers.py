@@ -28,7 +28,7 @@ class CommandHandlers:
 
         if self.cfg.emotion_enabled:
             emotion = self.storage.get_emotion(user_id)
-            lines.append(f"\n[内心状态]")
+            lines.append("\n[内心状态]")
             lines.append(emotion.status_str())
             lines.append(f"感觉：{emotion.narrative()}")
 
@@ -47,7 +47,7 @@ class CommandHandlers:
 
         if self.cfg.profile_enabled:
             profile = self.storage.get_profile(user_id)
-            lines.append(f"\n[对用户的印象]")
+            lines.append("\n[对用户的印象]")
             lines.append(f"昵称：{profile.nickname or '未知'}")
             lines.append(f"聊天次数：{profile.chat_count}")
             lines.append(f"好感度：{profile.affinity:.0f}/100")
@@ -56,13 +56,13 @@ class CommandHandlers:
 
         if self.cfg.memory_enabled:
             history = self.storage.get_history(user_id)
-            lines.append(f"\n[记忆]")
+            lines.append("\n[记忆]")
             lines.append(f"已记录 {len(history)} 条对话")
 
         if self.cfg.consolidation_enabled:
             last = self.storage.get_last_consolidation(user_id)
             if last:
-                lines.append(f"\n[昨日回响]")
+                lines.append("\n[昨日回响]")
                 lines.append(f"{last.shift_hint} ({last.date})")
 
         lines.append(f"\n场景：{'私聊' if is_private else '群聊'}")
@@ -150,7 +150,7 @@ class CommandHandlers:
 
         lines = [
             f"=== 人格日结 {cons.date} {emoji} ===",
-            f"\n互动统计:",
+            "\n互动统计:",
             f"  成功: {cons.connected_count} | 错过: {cons.missed_count}",
             f"  主动: {cons.active_count} | 被动: {cons.passive_count}",
             f"  尴尬: {cons.awkward_count} | 化解: {cons.relief_count}",
